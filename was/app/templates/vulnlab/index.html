@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}취약점 실습 랩 – 공공 의료 민원 포털{% endblock %}
+
+{% block hero %}
+<div class="hero" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:#fff;padding:2rem 2.5rem;border-radius:8px;margin-bottom:1.5rem;">
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.75rem;">
+    <span style="font-size:2rem;">🔓</span>
+    <h1 style="margin:0;font-size:1.6rem;">OWASP Top 10:2025 취약점 실습 랩</h1>
+  </div>
+  <p style="margin:0;opacity:.85;">A01 ~ A10 전체 시나리오를 직접 실습하는 교육용 환경입니다.</p>
+</div>
+<div class="alert alert-warning" role="alert" style="border-left:4px solid #f59e0b;background:#fef3c7;color:#92400e;">
+  <strong>⚠ 교육용 경고:</strong> 이 페이지의 모든 취약점은 교육 목적으로 의도적으로 구현되었습니다.
+  실제 운영 환경에서 이러한 취약점이 존재하면 안 됩니다. 실습 내용을 외부 시스템에 적용하지 마세요.
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem;margin-top:1rem;">
+
+  {% set scenarios = [
+    ("A01","Broken Access Control","IDOR를 통해 다른 사용자 정보에 무단 접근","a01","danger"),
+    ("A02","Security Misconfiguration","SECRET_KEY 노출 및 상세 오류 메시지 시연","a02","warning"),
+    ("A03","Supply Chain Failures","패키지 버전 고정 현황 및 SBOM 부재 확인","a03","info"),
+    ("A04","Cryptographic Failures","MD5/SHA1 취약 해시 vs 안전한 PBKDF2 비교","a04","warning"),
+    ("A05","Injection (SQLi)","Raw SQL 인젝션으로 전체 사용자 데이터 탈취","a05","danger"),
+    ("A06","Insecure Design","Rate Limiting 부재 및 상태 전이 검증 없음","a06","warning"),
+    ("A07","Authentication Failures","브루트포스 무제한 시도 및 약한 비밀번호 정책","a07","danger"),
+    ("A08","Data Integrity Failures","Pickle 역직렬화를 통한 임의 코드 실행","a08","danger"),
+    ("A09","Logging & Alerting Failures","민감 정보 평문 로깅 및 알림 부재","a09","warning"),
+    ("A10","Mishandling Exceptional Conditions","Fail-Open 설계 및 예외 상세 노출","a10","warning"),
+  ] %}
+
+  {% for code, title, desc, slug, level in scenarios %}
+  <div class="card" style="border-top:4px solid {% if level=='danger' %}#ef4444{% elif level=='warning' %}#f59e0b{% else %}#3b82f6{% endif %};">
+    <div class="card-body" style="padding:1.25rem;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span class="badge" style="background:{% if level=='danger' %}#fee2e2;color:#991b1b{% elif level=='warning' %}#fef3c7;color:#92400e{% else %}#dbeafe;color:#1e40af{% endif %};padding:.2rem .6rem;border-radius:4px;font-size:.75rem;font-weight:700;">{{ code }}</span>
+        <span style="font-size:.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">{% if level=='danger' %}HIGH{% elif level=='warning' %}MEDIUM{% else %}INFO{% endif %}</span>
+      </div>
+      <h3 style="margin:.5rem 0 .4rem;font-size:1rem;">{{ title }}</h3>
+      <p style="margin:0 0 1rem;font-size:.85rem;color:#6b7280;line-height:1.5;">{{ desc }}</p>
+      <a href="{{ url_for('vulnlab_' + slug) }}" class="btn btn-sm" style="background:{% if level=='danger' %}#ef4444{% elif level=='warning' %}#f59e0b{% else %}#3b82f6{% endif %};color:#fff;border:none;padding:.4rem .9rem;border-radius:4px;text-decoration:none;font-size:.85rem;">실습 시작 →</a>
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

@@ -41,6 +41,7 @@
         {% if current_user.is_authenticated %}
           <a class="nav-link" href="{{ url_for('complaints_list') }}">민원</a>
           <a class="nav-link" href="{{ url_for('profile') }}">마이페이지</a>
+          <a class="nav-link" href="{{ url_for('vulnlab_index') }}">취약점 실습</a>
           {% if current_user.role == 'admin' %}
             <a class="nav-link" href="{{ url_for('admin_dashboard') }}">관리자</a>
             <a class="nav-link" href="{{ url_for('admin_logs') }}">로그 모니터링</a>

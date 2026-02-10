@@ -1,6 +1,11 @@
+import base64
+import hashlib
 import json
 from io import BytesIO
 import os
+import pickle
+import subprocess
+import time
 import uuid
 from datetime import UTC
 from functools import wraps
@@ -23,7 +28,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfgen import canvas
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from werkzeug.utils import secure_filename
 
 from app import db
@@ -107,6 +112,47 @@ LOG_EVENT_OPTIONS = {
 }
 
 KST = ZoneInfo("Asia/Seoul")
+
+_vulnlab_a06_request_log: dict = {}   # A06: {ip: [timestamp]}
+_vulnlab_a07_attempt_log: dict = {}   # A07: {ip: int}
+
+# ── 추가 시나리오 데모 데이터 ─────────────────────────────────────────────────
+# 암호화2: MD5로 저장된 취약 비밀번호 데모 사용자 (실제 DB가 아닌 메모리 dict)
+_DEMO_MD5_USERS = {
+    "admin_demo":   hashlib.md5("admin1234".encode()).hexdigest(),   # 0192023a7bbd73250516f069df18b500
+    "user1_demo":   hashlib.md5("user12345".encode()).hexdigest(),   # a9af47aba5d87a79bb9ce7dfc11e70f5
+    "nurse_kim":    hashlib.md5("hospital99".encode()).hexdigest(),  # 5f4dcc3b5aa765d61d8327deb882cf99-ish
+    "doctor_lee":   hashlib.md5("password1".encode()).hexdigest(),   # e38ad214943daad1d64c102faec29de4
+    "patient_hong": hashlib.md5("hong1234".encode()).hexdigest(),
+}
+
+# 암호화3: 가짜 의료 파일 (IDOR 시연용)
+_FAKE_PATIENT_FILES: dict = {
+    "진료기록_홍길동_900101.pdf": (
+        "[환자명] 홍길동  [생년월일] 1990-01-01  [주민번호] 900101-1234567\n"
+        "[진단명] 고혈압 1기 (I10)\n[혈압] 140/90 mmHg\n"
+        "[처방] 암로디핀 5mg 1일 1회 / 3개월분"
+    ),
+    "진료기록_김철수_850315.pdf": (
+        "[환자명] 김철수  [생년월일] 1985-03-15  [주민번호] 850315-1987654\n"
+        "[진단명] 제2형 당뇨병 (E11)\n[공복혈당] 180mg/dL\n"
+        "[처방] 메트포르민 500mg 1일 2회 / 1개월분"
+    ),
+    "진료기록_이영희_920720.pdf": (
+        "[환자명] 이영희  [생년월일] 1992-07-20  [주민번호] 920720-2345678\n"
+        "[진단명] 요추 추간판 탈출증 L4-L5 (M51.1)\n"
+        "[처방] 물리치료 주 2회 / 에토리콕시브 60mg 1일 1회"
+    ),
+    "민원결과_박민준_880503.pdf": (
+        "[민원인] 박민준  [주민번호] 880503-1567890\n"
+        "[민원유형] 의료비 과다 청구\n"
+        "[처리결과] 환급 결정 (32,500원) — 담당: 이XX 주임"
+    ),
+}
+
+# 인증2: 순차 세션 ID 취약점 데모
+_weak_sessions: dict = {}       # {session_id(int): user_info_dict}
+_weak_session_counter: list = [0]  # mutable int counter
 
 POST_ATTACHMENT_ALLOWED_EXTENSIONS = {
     "jpg",
@@ -1443,6 +1489,444 @@ def init_routes(app):
             "security/detail.html",
             scenario=scenario,
         )
+
+    # ── VulnLab ──────────────────────────────────────────────────────────────────
+
+    @app.route("/vulnlab/")
+    @login_required
+    def vulnlab_index():
+        return render_template("vulnlab/index.html")
+
+    @app.route("/vulnlab/a01")
+    @login_required
+    def vulnlab_a01():
+        target_id = request.args.get("user_id", type=int)
+        target_user = None
+        if target_id is not None:
+            target_user = db.session.get(User, target_id)
+        all_users = User.query.with_entities(User.id, User.username).all()
+        return render_template(
+            "vulnlab/a01.html",
+            target_user=target_user,
+            all_users=all_users,
+            target_id=target_id,
+        )
+
+    @app.route("/vulnlab/a02")
+    @login_required
+    def vulnlab_a02():
+        import traceback as _tb
+        secret_key = current_app.config.get("SECRET_KEY", "unknown")
+        debug_mode = current_app.config.get("DEBUG", False)
+        db_url = current_app.config.get("SQLALCHEMY_DATABASE_URI", "unknown")
+        error_detail = None
+        if request.args.get("trigger_error"):
+            try:
+                _ = 1 / 0
+            except ZeroDivisionError:
+                error_detail = _tb.format_exc()
+        return render_template(
+            "vulnlab/a02.html",
+            secret_key=secret_key,
+            debug_mode=debug_mode,
+            db_url=db_url,
+            error_detail=error_detail,
+        )
+
+    @app.route("/vulnlab/a03")
+    @login_required
+    def vulnlab_a03():
+        req_path = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", "requirements.txt")
+        )
+        requirements = []
+        try:
+            with open(req_path) as _f:
+                for line in _f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        requirements.append(line)
+        except Exception:
+            requirements = ["(requirements.txt 읽기 실패)"]
+        pip_output = ""
+        try:
+            result = subprocess.run(
+                ["pip", "list", "--format=columns"],
+                capture_output=True, text=True, timeout=10
+            )
+            pip_output = result.stdout
+        except Exception as _e:
+            pip_output = f"오류: {_e}"
+        return render_template(
+            "vulnlab/a03.html",
+            requirements=requirements,
+            pip_output=pip_output,
+        )
+
+    @app.route("/vulnlab/a04", methods=["GET", "POST"])
+    @login_required
+    def vulnlab_a04():
+        results = None
+        hash_input = ""
+        if request.method == "POST":
+            hash_input = request.form.get("hash_input", "")
+            results = {
+                "plaintext": hash_input,
+                "md5": hashlib.md5(hash_input.encode()).hexdigest(),
+                "sha1": hashlib.sha1(hash_input.encode()).hexdigest(),
+                "sha256": hashlib.sha256(hash_input.encode()).hexdigest(),
+                "pbkdf2": hashlib.pbkdf2_hmac(
+                    "sha256", hash_input.encode(), b"salt", 100000
+                ).hex(),
+            }
+        return render_template("vulnlab/a04.html", results=results, hash_input=hash_input)
+
+    @app.route("/vulnlab/a05")
+    @login_required
+    def vulnlab_a05():
+        search = request.args.get("q", "")
+        vuln_rows = []
+        safe_rows = []
+        vuln_error = None
+        if search:
+            try:
+                vuln_sql = (
+                    f"SELECT id,username,email,role FROM user"
+                    f" WHERE username LIKE '%{search}%'"
+                )
+                vuln_rows = db.session.execute(text(vuln_sql)).fetchall()
+            except Exception as _e:
+                vuln_error = str(_e)
+            try:
+                safe_sql = (
+                    "SELECT id,username,email,role FROM user WHERE username LIKE :s"
+                )
+                safe_rows = db.session.execute(
+                    text(safe_sql), {"s": f"%{search}%"}
+                ).fetchall()
+            except Exception:
+                safe_rows = []
+        return render_template(
+            "vulnlab/a05.html",
+            search=search,
+            vuln_rows=vuln_rows,
+            safe_rows=safe_rows,
+            vuln_error=vuln_error,
+        )
+
+    @app.route("/vulnlab/a06", methods=["GET", "POST"])
+    @login_required
+    def vulnlab_a06():
+        ip = request.remote_addr or "unknown"
+        now_ts = time.time()
+        window = 60
+        if ip not in _vulnlab_a06_request_log:
+            _vulnlab_a06_request_log[ip] = []
+        _vulnlab_a06_request_log[ip] = [
+            t for t in _vulnlab_a06_request_log[ip] if now_ts - t < window
+        ]
+        status_update_msg = None
+        if request.method == "POST":
+            action = request.form.get("action")
+            if action == "request":
+                _vulnlab_a06_request_log[ip].append(now_ts)
+            elif action == "status_jump":
+                complaint_id = request.form.get("complaint_id", type=int)
+                new_status = request.form.get("new_status", "")
+                if complaint_id and new_status in COMPLAINT_STATUS_SET:
+                    c = db.session.get(Complaint, complaint_id)
+                    if c:
+                        old_status = c.status
+                        c.status = new_status
+                        db.session.commit()
+                        status_update_msg = f"민원 #{complaint_id} 상태: {old_status} → {new_status}"
+                    else:
+                        status_update_msg = f"민원 #{complaint_id} 찾을 수 없음"
+                else:
+                    status_update_msg = "유효하지 않은 입력"
+        request_count = len(_vulnlab_a06_request_log[ip])
+        complaints = (
+            Complaint.query.filter_by(user_id=current_user.id)
+            .order_by(Complaint.created_at.desc())
+            .limit(5)
+            .all()
+        )
+        return render_template(
+            "vulnlab/a06.html",
+            request_count=request_count,
+            window=window,
+            status_update_msg=status_update_msg,
+            complaints=complaints,
+        )
+
+    @app.route("/vulnlab/a07", methods=["GET", "POST"])
+    @login_required
+    def vulnlab_a07():
+        brute_results = []
+        target_username = ""
+        if request.method == "POST":
+            target_username = request.form.get("target_username", "")
+            common_passwords = [
+                "password", "123456", "admin", "user12345",
+                "admin1234", "qwerty", "letmein", "abc123",
+            ]
+            target_u = User.query.filter_by(username=target_username).first()
+            for pw in common_passwords:
+                matched = bool(target_u and target_u.check_password(pw))
+                brute_results.append({"password": pw, "matched": matched})
+            ip_key = request.remote_addr or "unknown"
+            _vulnlab_a07_attempt_log[ip_key] = (
+                _vulnlab_a07_attempt_log.get(ip_key, 0) + len(common_passwords)
+            )
+        attempt_count = _vulnlab_a07_attempt_log.get(request.remote_addr or "", 0)
+        raw_cookie = request.cookies.get("session", "(없음)")
+        session_cookie = (raw_cookie[:30] + "...") if len(raw_cookie) > 30 else raw_cookie
+        return render_template(
+            "vulnlab/a07.html",
+            brute_results=brute_results,
+            target_username=target_username,
+            attempt_count=attempt_count,
+            session_cookie=session_cookie,
+        )
+
+    @app.route("/vulnlab/a08", methods=["GET", "POST"])
+    @login_required
+    def vulnlab_a08():
+        generated_payload = None
+        vuln_result = None
+        safe_result = None
+        error_msg = None
+        if request.method == "POST":
+            action = request.form.get("action")
+            if action == "generate":
+                class _SafeDemoObj:
+                    def __init__(self):
+                        self.name = "안전한 데모 객체"
+                        self.value = 42
+                        self.message = "이 객체는 pickle로 직렬화됩니다"
+                raw = pickle.dumps(_SafeDemoObj())
+                generated_payload = base64.b64encode(raw).decode()
+            elif action == "vuln_deserialize":
+                b64_input = request.form.get("b64_input", "")
+                try:
+                    raw = base64.b64decode(b64_input)
+                    obj = pickle.loads(raw)  # noqa: S301
+                    obj_repr = vars(obj) if hasattr(obj, "__dict__") else str(obj)
+                    vuln_result = f"역직렬화 성공: {obj.__class__.__name__} - {obj_repr}"
+                except Exception as _e:
+                    error_msg = f"역직렬화 오류: {_e}"
+            elif action == "safe_json":
+                json_input = request.form.get("json_input", "{}")
+                try:
+                    obj = json.loads(json_input)
+                    safe_result = f"JSON 파싱 성공: {obj}"
+                except Exception as _e:
+                    safe_result = f"JSON 파싱 오류: {_e}"
+        return render_template(
+            "vulnlab/a08.html",
+            generated_payload=generated_payload,
+            vuln_result=vuln_result,
+            safe_result=safe_result,
+            error_msg=error_msg,
+        )
+
+    @app.route("/vulnlab/a09", methods=["GET", "POST"])
+    @login_required
+    def vulnlab_a09():
+        logs = (
+            AuditLog.query.filter_by(actor_id=current_user.id)
+            .order_by(AuditLog.timestamp.desc())
+            .limit(20)
+            .all()
+        )
+        log_result = None
+        if request.method == "POST":
+            fake_password = request.form.get("fake_password", "")
+            log_action(
+                "vulnlab_sensitive_log",
+                meta={"password_plaintext": fake_password, "user": current_user.username},
+            )
+            log_action(
+                "vulnlab_masked_log",
+                meta={"password": "****", "user": current_user.username},
+            )
+            db.session.commit()
+            log_result = {
+                "vuln_log": (
+                    f'{{"event":"login","user":"{current_user.username}",'
+                    f'"password":"{fake_password}"}}'
+                ),
+                "safe_log": (
+                    f'{{"event":"login","user":"{current_user.username}",'
+                    f'"password":"****"}}'
+                ),
+            }
+            logs = (
+                AuditLog.query.filter_by(actor_id=current_user.id)
+                .order_by(AuditLog.timestamp.desc())
+                .limit(20)
+                .all()
+            )
+        failed_count = AuditLog.query.filter_by(action="login_failed").count()
+        return render_template(
+            "vulnlab/a09.html",
+            logs=logs,
+            log_result=log_result,
+            failed_count=failed_count,
+        )
+
+    @app.route("/vulnlab/a10", methods=["GET", "POST"])
+    @login_required
+    def vulnlab_a10():
+        import traceback as _tb
+        exception_result = None
+        null_result = None
+        if request.method == "POST":
+            action = request.form.get("action")
+            if action == "divide":
+                divisor_str = request.form.get("divisor", "")
+                try:
+                    divisor = int(divisor_str)
+                    result = 100 / divisor
+                    exception_result = {
+                        "vuln": f"100 / {divisor} = {result}",
+                        "safe": f"100 / {divisor} = {result}",
+                    }
+                except ZeroDivisionError:
+                    exception_result = {
+                        "vuln": _tb.format_exc(),
+                        "safe": "오류: 0으로 나눌 수 없습니다.",
+                    }
+                except ValueError:
+                    exception_result = {
+                        "vuln": _tb.format_exc(),
+                        "safe": "오류: 숫자를 입력해주세요.",
+                    }
+            elif action == "null_input":
+                value = request.form.get("value", "")
+                if not value:
+                    null_result = {
+                        "vuln": "AttributeError: 'NoneType' object has no attribute 'upper'",
+                        "safe": "입력값이 없습니다.",
+                    }
+                else:
+                    null_result = {"vuln": value.upper(), "safe": value.upper()}
+        admin_required_source = (
+            "def admin_required(func):\n"
+            "    @wraps(func)\n"
+            "    def wrapped(*args, **kwargs):\n"
+            "        #if not current_user.is_authenticated or current_user.role != 'admin':\n"
+            "        #    flash('관리자만 접근 가능합니다.', 'danger')\n"
+            "        #    return redirect(url_for('index'))\n"
+            "        return func(*args, **kwargs)  # ← Fail-Open!\n"
+            "    return wrapped"
+        )
+        return render_template(
+            "vulnlab/a10.html",
+            exception_result=exception_result,
+            null_result=null_result,
+            admin_required_source=admin_required_source,
+        )
+
+    # ── 추가 취약점 시나리오 ───────────────────────────────────────────────────────
+
+    # 암호화2: MD5 비밀번호 저장 + SQL Injection 연동
+    @app.route("/vulnlab/crypto2")
+    @login_required
+    def vulnlab_crypto2():
+        search = request.args.get("q", "")
+        vuln_rows = []
+        vuln_error = None
+        if search:
+            try:
+                vuln_sql = (
+                    f"SELECT id,username,password_hash,email,role FROM user"
+                    f" WHERE username LIKE '%{search}%'"
+                )
+                vuln_rows = db.session.execute(text(vuln_sql)).fetchall()
+            except Exception as _e:
+                vuln_error = str(_e)
+        return render_template(
+            "vulnlab/crypto2.html",
+            search=search,
+            vuln_rows=vuln_rows,
+            vuln_error=vuln_error,
+            demo_users=_DEMO_MD5_USERS,
+        )
+
+    # 암호화3: 파일 다운로드 IDOR (파일명에 개인정보 + 소유권 체크 없음)
+    @app.route("/vulnlab/crypto3")
+    @login_required
+    def vulnlab_crypto3():
+        my_file = list(_FAKE_PATIENT_FILES.keys())[0]
+        return render_template(
+            "vulnlab/crypto3.html",
+            my_file=my_file,
+            all_files=list(_FAKE_PATIENT_FILES.keys()),
+        )
+
+    @app.route("/vulnlab/crypto3/download")
+    @login_required
+    def vulnlab_crypto3_download():
+        file_name = request.args.get("file_name", "")
+        if not file_name:
+            return redirect(url_for("vulnlab_crypto3"))
+        # 취약: 파일명 소유권 체크 없음, 경로 그대로 노출
+        content = _FAKE_PATIENT_FILES.get(file_name)
+        if content is None:
+            return f"파일을 찾을 수 없습니다: {file_name}", 404
+        return Response(
+            content,
+            mimetype="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+        )
+
+    # 인증2: 순차 세션 ID 취약점 데모
+    @app.route("/vulnlab/auth2", methods=["GET", "POST"])
+    @login_required
+    def vulnlab_auth2():
+        session_info = None
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            if username:
+                _weak_session_counter[0] += 1
+                sid = _weak_session_counter[0]
+                _weak_sessions[sid] = {
+                    "username": username,
+                    "role": "admin" if "admin" in username else "user",
+                    "email": f"{username}@hospital.kr",
+                    "complaints": f"민원 {sid * 3}건",
+                }
+                session_info = {"session_id": sid, "user": _weak_sessions[sid]}
+        return render_template(
+            "vulnlab/auth2.html",
+            session_info=session_info,
+            sessions=dict(_weak_sessions),
+        )
+
+    @app.route("/vulnlab/auth2/profile")
+    @login_required
+    def vulnlab_auth2_profile():
+        try:
+            sid = int(request.args.get("session_id", 0))
+        except ValueError:
+            return render_template("vulnlab/auth2_profile.html", user_info=None, session_id=0)
+        user_info = _weak_sessions.get(sid)
+        return render_template(
+            "vulnlab/auth2_profile.html",
+            user_info=user_info,
+            session_id=sid,
+        )
+
+    # 인증3: @login_required 고의 누락 – 인증 없이 전체 사용자 목록 접근
+    @app.route("/vulnlab/auth3/user-list")
+    # @login_required  ← 고의로 누락! (인증 우회 취약점 시연)
+    def vulnlab_auth3_userlist():
+        users = User.query.with_entities(
+            User.id, User.username, User.email,
+            User.full_name, User.phone, User.role,
+        ).all()
+        return render_template("vulnlab/auth3.html", users=users)
 
     @app.errorhandler(404)
     def not_found_error(_):

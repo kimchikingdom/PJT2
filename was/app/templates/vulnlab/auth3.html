@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}인증 우회 – @login_required 누락{% endblock %}
+
+{% block content %}
+<div style="background:#fef2f2;border:2px solid #ef4444;border-radius:8px;padding:1.25rem;margin-bottom:1.5rem;">
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;">
+    <span style="font-size:1.5rem;">🔓</span>
+    <strong style="color:#b91c1c;font-size:1rem;">인증 우회 성공 — 로그인 없이 전체 사용자 목록 접근</strong>
+  </div>
+  <p style="margin:0;font-size:.85rem;color:#7f1d1d;">
+    이 페이지는 <code>@login_required</code> 데코레이터가 <strong>의도적으로 누락</strong>되어 있습니다.
+    로그아웃 상태에서도 URL을 직접 입력하면 모든 사용자 정보가 노출됩니다.
+  </p>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">전체 사용자 목록 ({{ users|length }}명)</h2>
+    <p style="font-size:.83rem;color:#6b7280;margin-bottom:1rem;">
+      접근 URL: <code>GET /vulnlab/auth3/user-list</code> — 인증 없이 접근 가능
+    </p>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;font-size:.83rem;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#fef2f2;">
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #fecaca;">id</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #fecaca;">username</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #fecaca;">email</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #fecaca;">full_name</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #fecaca;">phone</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #fecaca;">role</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr style="background:{% if u.role == 'admin' %}#fef2f2{% else %}#fff{% endif %};">
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;">{{ u.id }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;">{{ u.username }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;">{{ u.email }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;">{{ u.full_name }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;">{{ u.phone }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;">
+            <span style="background:{% if u.role == 'admin' %}#fef2f2;color:#b91c1c{% else %}#f3f4f6;color:#374151{% endif %};padding:.1rem .4rem;border-radius:3px;font-size:.75rem;">{{ u.role }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <div class="card" style="border-top:4px solid #ef4444;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 코드 (현재)</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code>@app.route("/admin/user-list")
+# @login_required  ← 누락!
+# @admin_required  ← 누락!
+def admin_user_list():
+    users = User.query.all()
+    return render_template("users.html",
+                           users=users)</code></pre>
+    </div>
+  </div>
+  <div class="card" style="border-top:4px solid #22c55e;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 코드</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code>@app.route("/admin/user-list")
+@login_required   # ← 로그인 체크
+@admin_required   # ← 관리자 권한 체크
+def admin_user_list():
+    users = User.query.all()
+    return render_template("users.html",
+                           users=users)</code></pre>
+    </div>
+  </div>
+</div>
+
+<a href="{{ url_for('vulnlab_index') }}" style="color:#6b7280;font-size:.85rem;">← 목록으로</a>
+{% endblock %}

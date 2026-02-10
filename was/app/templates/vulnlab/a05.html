@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}A05 – Injection (SQL Injection){% endblock %}
+
+{% block hero %}
+<div class="hero" style="background:linear-gradient(135deg,#450a0a,#7f1d1d);color:#fff;padding:1.5rem 2rem;border-radius:8px;margin-bottom:1rem;">
+  <span style="font-size:.8rem;opacity:.7;text-transform:uppercase;letter-spacing:.1em;">OWASP Top 10:2025</span>
+  <h1 style="margin:.25rem 0 .5rem;font-size:1.5rem;">A05 – Injection (SQL Injection)</h1>
+  <p style="margin:0;opacity:.85;">취약한 Raw SQL과 안전한 파라미터 바인딩을 나란히 비교합니다.</p>
+</div>
+<div class="alert alert-warning" role="alert">⚠ 교육 목적으로 의도적으로 구현된 취약점입니다.</div>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.5rem;">SQL Injection 시연</h2>
+    <p style="color:#6b7280;font-size:.85rem;margin-bottom:.75rem;">
+      검색어를 입력하거나 아래 공격 예시를 클릭하세요.
+    </p>
+    <form method="get" action="{{ url_for('vulnlab_a05') }}" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.75rem;">
+      <input type="text" name="q" value="{{ search }}" placeholder="검색어 (예: ' OR '1'='1)"
+             style="flex:1;min-width:250px;padding:.45rem .75rem;border:1px solid #d1d5db;border-radius:4px;font-size:.9rem;font-family:monospace;">
+      <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:.45rem 1rem;border-radius:4px;">검색</button>
+    </form>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;font-size:.8rem;">
+      <span style="color:#6b7280;">공격 예시:</span>
+      <a href="{{ url_for('vulnlab_a05', q="' OR '1'='1") }}"
+         style="background:#fef2f2;color:#b91c1c;padding:.15rem .5rem;border-radius:3px;text-decoration:none;font-family:monospace;">
+        ' OR '1'='1
+      </a>
+      <a href="{{ url_for('vulnlab_a05', q="' UNION SELECT id,username,password_hash,email,role FROM user --") }}"
+         style="background:#fef2f2;color:#b91c1c;padding:.15rem .5rem;border-radius:3px;text-decoration:none;font-family:monospace;">
+        UNION SELECT (비밀번호 해시)
+      </a>
+    </div>
+  </div>
+</div>
+
+{% if search %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <div class="card" style="border-top:4px solid #ef4444;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.9rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 쿼리 결과 ({{ vuln_rows|length }}건)</h3>
+      <code style="font-size:.75rem;display:block;background:#1e1e1e;color:#fca5a5;padding:.5rem .75rem;border-radius:4px;margin-bottom:.75rem;word-break:break-all;">
+        SELECT id,username,email,role FROM user WHERE username LIKE '%{{ search }}%'
+      </code>
+      {% if vuln_error %}
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:.75rem;font-size:.8rem;color:#b91c1c;font-family:monospace;">{{ vuln_error }}</div>
+      {% elif vuln_rows %}
+        <div style="overflow-x:auto;">
+        <table style="width:100%;font-size:.78rem;border-collapse:collapse;">
+          <thead><tr style="background:#f3f4f6;">
+            {% for col in vuln_rows[0]._fields %}
+            <th style="padding:.3rem .5rem;text-align:left;border-bottom:1px solid #e5e7eb;">{{ col }}</th>
+            {% endfor %}
+          </tr></thead>
+          <tbody>
+          {% for row in vuln_rows %}
+          <tr>{% for val in row %}<td style="padding:.3rem .5rem;border-bottom:1px solid #f3f4f6;font-family:monospace;font-size:.75rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ val }}">{{ val }}</td>{% endfor %}</tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <p style="color:#6b7280;font-size:.85rem;">결과 없음</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card" style="border-top:4px solid #22c55e;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.9rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 쿼리 결과 ({{ safe_rows|length }}건)</h3>
+      <code style="font-size:.75rem;display:block;background:#1e1e1e;color:#86efac;padding:.5rem .75rem;border-radius:4px;margin-bottom:.75rem;">
+        SELECT ... WHERE username LIKE :s {"s": "%{{ search }}%"}
+      </code>
+      {% if safe_rows %}
+        <div style="overflow-x:auto;">
+        <table style="width:100%;font-size:.78rem;border-collapse:collapse;">
+          <thead><tr style="background:#f0fdf4;">
+            {% for col in safe_rows[0]._fields %}
+            <th style="padding:.3rem .5rem;text-align:left;border-bottom:1px solid #dcfce7;">{{ col }}</th>
+            {% endfor %}
+          </tr></thead>
+          <tbody>
+          {% for row in safe_rows %}
+          <tr>{% for val in row %}<td style="padding:.3rem .5rem;border-bottom:1px solid #f0fdf4;font-family:monospace;font-size:.75rem;">{{ val }}</td>{% endfor %}</tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <p style="color:#6b7280;font-size:.85rem;">결과 없음 (인젝션 차단됨)</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <div class="card" style="border-top:4px solid #ef4444;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 코드</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code>search = request.args.get("q", "")
+
+# f-string 직접 삽입 → SQLi 가능!
+sql = f"""SELECT id, username, email
+          FROM user
+          WHERE username LIKE '%{search}%'"""
+
+rows = db.session.execute(text(sql)).fetchall()</code></pre>
+    </div>
+  </div>
+  <div class="card" style="border-top:4px solid #22c55e;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 코드</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code>search = request.args.get("q", "")
+
+# 파라미터 바인딩 → 인젝션 차단
+sql = """SELECT id, username, email
+         FROM user
+         WHERE username LIKE :s"""
+
+rows = db.session.execute(
+    text(sql), {"s": f"%{search}%"}
+).fetchall()</code></pre>
+    </div>
+  </div>
+</div>
+
+<a href="{{ url_for('vulnlab_index') }}" style="color:#6b7280;font-size:.85rem;">← 목록으로</a>
+{% endblock %}

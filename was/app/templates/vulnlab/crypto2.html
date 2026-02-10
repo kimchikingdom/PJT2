@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}암호화 실패 – MD5 비밀번호 + SQL Injection{% endblock %}
+
+{% block hero %}
+<div class="hero" style="background:linear-gradient(135deg,#450a0a,#7f1d1d);color:#fff;padding:1.5rem 2rem;border-radius:8px;margin-bottom:1rem;">
+  <span style="font-size:.8rem;opacity:.7;text-transform:uppercase;letter-spacing:.1em;">Cryptographic Failures + Injection</span>
+  <h1 style="margin:.25rem 0 .5rem;font-size:1.5rem;">암호화 실패 – MD5 비밀번호 저장 + SQLi 탈취</h1>
+  <p style="margin:0;opacity:.85;">SQL Injection으로 비밀번호 해시를 탈취한 뒤, MD5이면 온라인에서 즉시 복호화됩니다.</p>
+</div>
+<div class="alert alert-warning" role="alert">⚠ 교육 목적으로 의도적으로 구현된 취약점입니다.</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- MD5 데모 사용자 테이블 -->
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">시나리오 전제: MD5로 저장된 병원 내부 사용자 DB</h2>
+    <p style="color:#6b7280;font-size:.85rem;margin-bottom:1rem;">
+      실제 서비스가 아래처럼 비밀번호를 MD5 해시로 저장하고 있다고 가정합니다.
+      SQLi로 이 해시를 탈취하면 <strong>온라인 크래킹 사이트에서 즉시 원문이 복원</strong>됩니다.
+    </p>
+    <table style="width:100%;font-size:.83rem;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#f3f4f6;">
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">username</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">password_hash (MD5)</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">원문 (크래킹 후)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set originals = {
+          "admin_demo": "admin1234",
+          "user1_demo": "user12345",
+          "nurse_kim": "hospital99",
+          "doctor_lee": "password1",
+          "patient_hong": "hong1234"
+        } %}
+        {% for username, md5hash in demo_users.items() %}
+        <tr>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;">{{ username }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;font-size:.75rem;color:#b91c1c;">{{ md5hash }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;color:#b91c1c;">{{ originals.get(username, '???') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SQLi로 실제 DB 해시 탈취 -->
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">SQLi로 실제 user 테이블 탈취</h2>
+    <p style="color:#6b7280;font-size:.85rem;margin-bottom:1rem;">
+      UNION SELECT로 현재 앱의 user 테이블 전체를 덤프합니다.
+      실제 비밀번호 해시(werkzeug PBKDF2)가 노출됩니다.
+    </p>
+    <form method="get" action="{{ url_for('vulnlab_crypto2') }}" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.75rem;">
+      <input type="text" name="q" value="{{ search }}" placeholder="검색어"
+             style="flex:1;min-width:250px;padding:.45rem .75rem;border:1px solid #d1d5db;border-radius:4px;font-size:.9rem;font-family:monospace;">
+      <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:.45rem 1rem;border-radius:4px;">실행</button>
+    </form>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;font-size:.8rem;margin-bottom:1rem;">
+      <span style="color:#6b7280;">공격 페이로드:</span>
+      <a href="{{ url_for('vulnlab_crypto2', q="' OR '1'='1") }}"
+         style="background:#fef2f2;color:#b91c1c;padding:.15rem .5rem;border-radius:3px;text-decoration:none;font-family:monospace;">
+        ' OR '1'='1
+      </a>
+      <a href="{{ url_for('vulnlab_crypto2', q="' UNION SELECT id,username,password_hash,email,role FROM user --") }}"
+         style="background:#fef2f2;color:#b91c1c;padding:.15rem .5rem;border-radius:3px;text-decoration:none;font-family:monospace;font-size:.75rem;">
+        UNION SELECT password_hash
+      </a>
+    </div>
+
+    {% if vuln_error %}
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:.75rem;font-size:.8rem;color:#b91c1c;font-family:monospace;">{{ vuln_error }}</div>
+    {% endif %}
+    {% if vuln_rows %}
+    <div style="overflow-x:auto;">
+    <table style="width:100%;font-size:.78rem;border-collapse:collapse;">
+      <thead><tr style="background:#fef2f2;">
+        {% for col in vuln_rows[0]._fields %}
+        <th style="padding:.4rem .5rem;text-align:left;border-bottom:1px solid #fecaca;">{{ col }}</th>
+        {% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for row in vuln_rows %}
+      <tr>
+        {% for val in row %}
+        <td style="padding:.4rem .5rem;border-bottom:1px solid #f3f4f6;font-family:monospace;font-size:.73rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ val }}">{{ val }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div style="margin-top:.75rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:.75rem;font-size:.82rem;">
+      <strong>다음 단계:</strong> 위 <code>password_hash</code> 값을 복사 →
+      <a href="https://crackstation.net" target="_blank" rel="noopener" style="color:#b91c1c;">CrackStation.net</a> 또는
+      <a href="https://hashes.com/en/decrypt/hash" target="_blank" rel="noopener" style="color:#b91c1c;">hashes.com</a>에 붙여넣기 → 원문 비밀번호 확인
+      <br>(MD5라면 수초 내 복원, werkzeug PBKDF2라면 불가)
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <div class="card" style="border-top:4px solid #ef4444;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 코드</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code>import hashlib
+
+# MD5: Rainbow table로 즉시 복원
+pw_hash = hashlib.md5(
+    password.encode()
+).hexdigest()
+
+db.execute(
+    "INSERT INTO users(username,password)"
+    f" VALUES('{username}','{pw_hash}')"
+)</code></pre>
+    </div>
+  </div>
+  <div class="card" style="border-top:4px solid #22c55e;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 코드</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code>from werkzeug.security import generate_password_hash
+
+# scrypt/PBKDF2 + 랜덤 salt 자동 적용
+pw_hash = generate_password_hash(password)
+# 결과: pbkdf2:sha256:600000$salt$hash
+
+# 파라미터 바인딩으로 SQLi 차단
+db.execute(
+    "INSERT INTO users(username,password)"
+    " VALUES(:u, :p)",
+    {"u": username, "p": pw_hash}
+)</code></pre>
+    </div>
+  </div>
+</div>
+
+<a href="{{ url_for('vulnlab_index') }}" style="color:#6b7280;font-size:.85rem;">← 목록으로</a>
+{% endblock %}

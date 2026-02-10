@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}인증 실패 – 순차 세션 ID{% endblock %}
+
+{% block hero %}
+<div class="hero" style="background:linear-gradient(135deg,#1e1b4b,#3730a3);color:#fff;padding:1.5rem 2rem;border-radius:8px;margin-bottom:1rem;">
+  <span style="font-size:.8rem;opacity:.7;text-transform:uppercase;letter-spacing:.1em;">Authentication Failures</span>
+  <h1 style="margin:.25rem 0 .5rem;font-size:1.5rem;">인증 실패 – 순차 세션 ID 추측 공격</h1>
+  <p style="margin:0;opacity:.85;">session_id=1, 2, 3 처럼 예측 가능한 세션 값을 발급하면 로그인 없이 타인의 세션을 탈취합니다.</p>
+</div>
+<div class="alert alert-warning" role="alert">⚠ 교육 목적으로 의도적으로 구현된 취약점입니다.</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- 취약 로그인 데모 -->
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">단계 1: 취약한 앱에 로그인 (순차 세션 ID 발급)</h2>
+    <p style="color:#6b7280;font-size:.9rem;margin-bottom:1rem;">
+      사용자명을 입력하면 <code>session_id=1</code>, <code>2</code>, <code>3</code>... 처럼
+      예측 가능한 정수 ID가 발급됩니다.
+    </p>
+    <form method="post" action="{{ url_for('vulnlab_auth2') }}" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+      <input type="text" name="username" placeholder="사용자명 (예: admin, nurse_kim)"
+             style="flex:1;min-width:200px;padding:.45rem .75rem;border:1px solid #d1d5db;border-radius:4px;font-size:.9rem;">
+      <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:.45rem 1rem;border-radius:4px;">취약 로그인</button>
+    </form>
+
+    {% if session_info %}
+    <div style="margin-top:1rem;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:1rem;">
+      <strong style="color:#b91c1c;">발급된 세션 정보:</strong>
+      <div style="margin-top:.5rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+        <div style="background:#fff;border:2px solid #ef4444;border-radius:6px;padding:.5rem 1rem;text-align:center;">
+          <div style="font-size:2rem;font-weight:700;color:#b91c1c;">{{ session_info.session_id }}</div>
+          <div style="font-size:.75rem;color:#6b7280;">Set-Cookie: session_id=<strong>{{ session_info.session_id }}</strong></div>
+        </div>
+        <div style="font-size:.85rem;">
+          username: <code>{{ session_info.user.username }}</code><br>
+          role: <code>{{ session_info.user.role }}</code>
+        </div>
+      </div>
+      <div style="margin-top:.75rem;font-size:.83rem;color:#b91c1c;">
+        → 공격자는 이 값 ±1 을 추측해서 <strong>로그인 없이</strong> 다른 사용자로 접근 가능!
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 현재 세션 목록 -->
+{% if sessions %}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">단계 2: 현재 발급된 세션 목록</h2>
+    <table style="width:100%;font-size:.83rem;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#f3f4f6;">
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">session_id</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">username</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">role</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">세션 탈취</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sid, user in sessions.items() %}
+        <tr>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;font-weight:600;">{{ sid }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;">{{ user.username }}</td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;">
+            <span style="background:{% if user.role == 'admin' %}#fef2f2;color:#b91c1c{% else %}#f3f4f6;color:#374151{% endif %};padding:.1rem .4rem;border-radius:3px;font-size:.75rem;">{{ user.role }}</span>
+          </td>
+          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;">
+            <a href="{{ url_for('vulnlab_auth2_profile', session_id=sid) }}"
+               style="background:#ef4444;color:#fff;padding:.2rem .5rem;border-radius:3px;text-decoration:none;font-size:.78rem;">
+              /profile?session_id={{ sid }}
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- 세션 직접 추측 -->
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">단계 3: 세션 ID 직접 추측 (공격자 시점)</h2>
+    <p style="color:#6b7280;font-size:.85rem;margin-bottom:1rem;">
+      브라우저 주소창에서 직접 아래 URL을 입력하세요. <strong>로그인 여부와 관계없이</strong> 해당 세션의 사용자 정보가 표시됩니다.
+    </p>
+    <div style="background:#1e1e1e;color:#fbbf24;padding:1rem;border-radius:6px;font-family:monospace;font-size:.82rem;">
+      http://localhost:8080/vulnlab/auth2/profile?session_id=<span style="color:#f87171;">1</span>
+    </div>
+    <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+      {% for i in range(1, [sessions|length + 1, 6]|min) %}
+      <a href="{{ url_for('vulnlab_auth2_profile', session_id=i) }}"
+         style="background:#f3f4f6;color:#374151;padding:.3rem .6rem;border-radius:4px;text-decoration:none;font-size:.82rem;font-family:monospace;">
+        session_id={{ i }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <div class="card" style="border-top:4px solid #ef4444;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 세션 발급</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># 단순 카운터 세션 ID
+counter += 1
+session_id = counter   # 1, 2, 3, 4...
+
+resp = make_response(redirect("/home"))
+resp.set_cookie("session_id",
+                str(session_id))  # 예측 가능!</code></pre>
+    </div>
+  </div>
+  <div class="card" style="border-top:4px solid #22c55e;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 세션 발급</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code>import secrets
+
+# 암호학적으로 안전한 랜덤 토큰
+session_token = secrets.token_urlsafe(32)
+# 예: "3d9Xk-mQr8vBcZ1..."  (256bit)
+
+resp = make_response(redirect("/home"))
+resp.set_cookie("session", session_token,
+                httponly=True,
+                secure=True,
+                samesite="Strict")</code></pre>
+    </div>
+  </div>
+</div>
+
+<a href="{{ url_for('vulnlab_index') }}" style="color:#6b7280;font-size:.85rem;">← 목록으로</a>
+{% endblock %}

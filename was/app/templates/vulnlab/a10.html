@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}A10 – Mishandling of Exceptional Conditions{% endblock %}
+
+{% block hero %}
+<div class="hero" style="background:linear-gradient(135deg,#0c1a2e,#1e3a5f);color:#fff;padding:1.5rem 2rem;border-radius:8px;margin-bottom:1rem;">
+  <span style="font-size:.8rem;opacity:.7;text-transform:uppercase;letter-spacing:.1em;">OWASP Top 10:2025</span>
+  <h1 style="margin:.25rem 0 .5rem;font-size:1.5rem;">A10 – Mishandling of Exceptional Conditions</h1>
+  <p style="margin:0;opacity:.85;">Fail-Open 설계와 예외 상세 노출을 시연합니다.</p>
+</div>
+<div class="alert alert-warning" role="alert">⚠ 교육 목적으로 의도적으로 구현된 취약점입니다.</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Fail-Open 시연 -->
+<div class="card" style="margin-bottom:1rem;border-top:4px solid #ef4444;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">시연 1: Fail-Open – admin_required 비활성</h2>
+    <p style="color:#6b7280;font-size:.9rem;margin-bottom:1rem;">
+      권한 체크 코드가 주석 처리되어 <strong>모든 사용자가 관리자 기능에 접근</strong>할 수 있습니다.
+    </p>
+    <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.8rem;overflow-x:auto;white-space:pre-wrap;"><code>{{ admin_required_source }}</code></pre>
+    <div style="margin-top:1rem;display:flex;gap:.75rem;flex-wrap:wrap;">
+      <a href="{{ url_for('admin_dashboard') }}"
+         class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:.4rem .9rem;border-radius:4px;text-decoration:none;font-size:.85rem;">
+        /admin 접근 (Fail-Open 확인)
+      </a>
+      <a href="{{ url_for('admin_users') }}"
+         class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none;padding:.4rem .9rem;border-radius:4px;text-decoration:none;font-size:.85rem;">
+        /admin/users 접근
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- 예외 상세 노출 -->
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">시연 2: 예외 상세 정보 노출</h2>
+    <p style="color:#6b7280;font-size:.9rem;margin-bottom:1rem;">
+      나눗수 0 또는 문자열 입력 시 취약한 응답(전체 traceback)과 안전한 응답(일반 메시지)을 비교합니다.
+    </p>
+    <form method="post" action="{{ url_for('vulnlab_a10') }}" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;">
+      <input type="hidden" name="action" value="divide">
+      <label style="font-size:.9rem;">100 ÷</label>
+      <input type="text" name="divisor" placeholder="0 또는 문자열"
+             style="width:120px;padding:.4rem .6rem;border:1px solid #d1d5db;border-radius:4px;font-size:.9rem;font-family:monospace;">
+      <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:.4rem .9rem;border-radius:4px;">계산</button>
+    </form>
+
+    {% if exception_result %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:1rem;">
+        <div style="font-size:.75rem;color:#b91c1c;font-weight:600;margin-bottom:.5rem;">❌ 취약한 응답 (Traceback 노출)</div>
+        <pre style="font-size:.75rem;color:#1e1e1e;white-space:pre-wrap;overflow-x:auto;margin:0;background:#fff;padding:.5rem;border-radius:4px;">{{ exception_result.vuln }}</pre>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:1rem;">
+        <div style="font-size:.75rem;color:#166534;font-weight:600;margin-bottom:.5rem;">✅ 안전한 응답 (일반 메시지)</div>
+        <div style="font-size:.85rem;color:#166534;padding:.5rem;">{{ exception_result.safe }}</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- NULL 입력 처리 -->
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="padding:1.25rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.75rem;">시연 3: NULL/빈값 예외 처리</h2>
+    <form method="post" action="{{ url_for('vulnlab_a10') }}" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;">
+      <input type="hidden" name="action" value="null_input">
+      <input type="text" name="value" placeholder="빈칸으로 제출해보세요"
+             style="flex:1;min-width:200px;padding:.4rem .6rem;border:1px solid #d1d5db;border-radius:4px;font-size:.9rem;">
+      <button type="submit" class="btn btn-sm" style="background:#6b7280;color:#fff;border:none;padding:.4rem .9rem;border-radius:4px;">제출</button>
+    </form>
+
+    {% if null_result %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:1rem;">
+        <div style="font-size:.75rem;color:#b91c1c;font-weight:600;margin-bottom:.5rem;">❌ 취약한 응답</div>
+        <code style="font-size:.82rem;color:#b91c1c;">{{ null_result.vuln }}</code>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:1rem;">
+        <div style="font-size:.75rem;color:#166534;font-weight:600;margin-bottom:.5rem;">✅ 안전한 응답</div>
+        <div style="font-size:.85rem;color:#166534;">{{ null_result.safe }}</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+  <div class="card" style="border-top:4px solid #ef4444;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 코드</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># Fail-Open: 예외 시 접근 허용
+def check_permission(user):
+    try:
+        return user.role == "admin"
+    except:
+        return True  # 예외 → 허용!
+
+# 예외 상세 노출
+try:
+    result = 1 / int(x)
+except Exception as e:
+    return str(e), 500  # traceback 노출</code></pre>
+    </div>
+  </div>
+  <div class="card" style="border-top:4px solid #22c55e;">
+    <div class="card-body" style="padding:1.25rem;">
+      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 코드</h3>
+      <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># Fail-Closed: 예외 시 접근 거부
+def check_permission(user):
+    try:
+        return user.role == "admin"
+    except:
+        return False  # 예외 → 거부!
+
+# 안전한 예외 처리
+try:
+    result = 1 / int(x)
+except ZeroDivisionError:
+    abort(400, "0으로 나눌 수 없습니다")
+except ValueError:
+    abort(400, "숫자를 입력하세요")</code></pre>
+    </div>
+  </div>
+</div>
+
+<a href="{{ url_for('vulnlab_index') }}" style="color:#6b7280;font-size:.85rem;">← 목록으로</a>
+{% endblock %}
