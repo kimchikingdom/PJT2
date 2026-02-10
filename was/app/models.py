@@ -18,16 +18,16 @@ class User(UserMixin, db.Model):
     full_name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-<<<<<<< HEAD
+
     # A02: 평문 비밀번호 저장 취약점 추가
     password_plain = db.Column(db.String(255), nullable=True)
-=======
+
     profile_image_name = db.Column(db.String(255), nullable=True)
     required_terms_agreed = db.Column(db.Boolean, default=False, nullable=False)
     required_terms_agreed_at = db.Column(db.DateTime, nullable=True)
     optional_terms_agreed = db.Column(db.Boolean, default=False, nullable=False)
     optional_terms_agreed_at = db.Column(db.DateTime, nullable=True)
->>>>>>> origin/main
+
     role = db.Column(db.String(20), default="user", nullable=False)
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
 
