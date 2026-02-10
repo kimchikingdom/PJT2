@@ -34,12 +34,18 @@ POSTS_CODE=$(HTTP_CODE "$BASE_URL/posts")
 HEALTH_INFO_CODE=$(HTTP_CODE "$BASE_URL/health-info")
 HEALTH_CENTERS_CODE=$(HTTP_CODE "$BASE_URL/health-centers")
 HEALTH_PROGRAM_CODE=$(HTTP_CODE "$BASE_URL/health-programs/vaccination")
+HEALTH_CALENDAR_CODE=$(HTTP_CODE "$BASE_URL/health-calendar")
+SUPPORT_PROGRAMS_CODE=$(HTTP_CODE "$BASE_URL/support-programs")
+RECORDS_PROC_CODE=$(HTTP_CODE "$BASE_URL/records/procedure")
+COMPLAINT_GUIDE_CODE=$(HTTP_CODE "$BASE_URL/complaints/guide")
+COMPLAINT_FAQ_CODE=$(HTTP_CODE "$BASE_URL/complaints/faq")
 
 rm -f /tmp/pjt2_user.cookies /tmp/pjt2_admin.cookies
 USER_LOGIN_CODE=$(curl -s -c /tmp/pjt2_user.cookies -b /tmp/pjt2_user.cookies -o /tmp/pjt2_report_body.$$ -w '%{http_code}' \
   -X POST "$BASE_URL/login" -d 'username=user1&password=user12345')
 USER_ADMIN_CODE=$(curl -s -b /tmp/pjt2_user.cookies -o /tmp/pjt2_report_body.$$ -w '%{http_code}' "$BASE_URL/admin")
 USER_PRIVATE_NOTICE_CODE=$(curl -s -b /tmp/pjt2_user.cookies -o /tmp/pjt2_report_body.$$ -w '%{http_code}' "$BASE_URL/notices/2")
+USER_COMPLAINT_PDF_CODE=$(curl -s -b /tmp/pjt2_user.cookies -o /tmp/pjt2_report_body.$$ -w '%{http_code}' "$BASE_URL/complaints/1/report.pdf")
 
 ADMIN_LOGIN_CODE=$(curl -s -c /tmp/pjt2_admin.cookies -b /tmp/pjt2_admin.cookies -o /tmp/pjt2_report_body.$$ -w '%{http_code}' \
   -X POST "$BASE_URL/login" -d 'username=admin&password=admin1234')
@@ -55,9 +61,15 @@ for expected_pair in \
   "HEALTH_INFO_CODE:200" \
   "HEALTH_CENTERS_CODE:200" \
   "HEALTH_PROGRAM_CODE:200" \
+  "HEALTH_CALENDAR_CODE:200" \
+  "SUPPORT_PROGRAMS_CODE:200" \
+  "RECORDS_PROC_CODE:200" \
+  "COMPLAINT_GUIDE_CODE:200" \
+  "COMPLAINT_FAQ_CODE:200" \
   "USER_LOGIN_CODE:302" \
   "USER_ADMIN_CODE:302" \
   "USER_PRIVATE_NOTICE_CODE:302" \
+  "USER_COMPLAINT_PDF_CODE:200" \
   "ADMIN_LOGIN_CODE:302" \
   "ADMIN_ADMIN_CODE:200" \
   "ADMIN_LOGS_CODE:200" \
@@ -115,9 +127,15 @@ $PYTEST_RAW
 | GET /health-info | $HEALTH_INFO_CODE |
 | GET /health-centers | $HEALTH_CENTERS_CODE |
 | GET /health-programs/vaccination | $HEALTH_PROGRAM_CODE |
+| GET /health-calendar | $HEALTH_CALENDAR_CODE |
+| GET /support-programs | $SUPPORT_PROGRAMS_CODE |
+| GET /records/procedure | $RECORDS_PROC_CODE |
+| GET /complaints/guide | $COMPLAINT_GUIDE_CODE |
+| GET /complaints/faq | $COMPLAINT_FAQ_CODE |
 | POST /login (user1) | $USER_LOGIN_CODE |
 | GET /admin (user1) | $USER_ADMIN_CODE |
 | GET /notices/2 private (user1) | $USER_PRIVATE_NOTICE_CODE |
+| GET /complaints/1/report.pdf (user1) | $USER_COMPLAINT_PDF_CODE |
 | POST /login (admin) | $ADMIN_LOGIN_CODE |
 | GET /admin (admin) | $ADMIN_ADMIN_CODE |
 | GET /admin/logs (admin) | $ADMIN_LOGS_CODE |

@@ -1,58 +1,121 @@
 {% extends 'base.html' %}
-{% block title %}게시판{% endblock %}
+{% block title %}게시판 | 공공 의료 민원 포털{% endblock %}
 {% block content %}
 <div class="card">
   <div class="split">
     <div>
-      <p class="eyebrow">Community Complaints</p>
+      <p class="eyebrow">Community Board</p>
       <h2>민원 커뮤니티 게시판</h2>
     </div>
     {% if current_user.is_authenticated %}
-      <a class="btn" href="{{ url_for('posts_new') }}">새 글 작성</a>
+      <a class="btn" href="{{ url_for('posts_new') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        새 글 작성
+      </a>
     {% endif %}
   </div>
 
-  <form class="inline-actions" method="get" style="margin: 12px 0;">
-    <input name="q" value="{{ q }}" placeholder="제목/내용/작성자 검색" style="max-width: 300px; margin-top: 0;">
-    <select name="category" style="max-width: 220px; margin-top: 0;">
+  <!-- 검색/필터 바 -->
+  <form class="search-bar" method="get" role="search" aria-label="게시물 검색">
+    <div class="search-input-wrap">
+      <span class="field-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      <input
+        name="q"
+        value="{{ q }}"
+        placeholder="제목, 내용, 작성자로 검색"
+        aria-label="검색어 입력"
+      >
+    </div>
+
+    <select name="category" aria-label="분류 선택">
       <option value="all" {% if category == 'all' %}selected{% endif %}>전체 분류</option>
       {% for item in category_options %}
       <option value="{{ item }}" {% if category == item %}selected{% endif %}>{{ post_category_labels.get(item, item) }}</option>
       {% endfor %}
     </select>
+
     <button type="submit">검색</button>
     <a class="btn btn-subtle" href="{{ url_for('posts_list') }}">초기화</a>
   </form>
 
+  <!-- 게시물 테이블 or 빈 상태 -->
+  {% if posts %}
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>ID</th><th>분류</th><th>제목</th><th>작성자</th><th>작성일</th></tr></thead>
+      <thead>
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">분류</th>
+          <th scope="col">제목</th>
+          <th scope="col">작성자</th>
+          <th scope="col">작성일</th>
+        </tr>
+      </thead>
       <tbody>
         {% for post in posts %}
         <tr>
           <td>{{ post.id }}</td>
           <td><span class="badge badge-open">{{ post_category_labels.get(post.category, post.category) }}</span></td>
-          <td class="text-wrap"><a href="{{ url_for('posts_detail', post_id=post.id) }}">{{ post.title }}</a></td>
+          <td class="text-wrap">
+            <a href="{{ url_for('posts_detail', post_id=post.id) }}">{{ post.title }}</a>
+          </td>
           <td>{{ post.author.username }}</td>
           <td>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="5" class="text-wrap">검색 조건에 맞는 게시물이 없습니다.</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+  {% else %}
+  <!-- 빈 상태 UI -->
+  <div class="empty-state" role="status">
+    <div class="empty-state-icon" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+    </div>
+    {% if q or category != 'all' %}
+      <h4>검색 결과가 없습니다</h4>
+      <p>다른 검색어나 분류를 선택해 보세요.<br>검색 조건을 변경하거나 <a href="{{ url_for('posts_list') }}">전체 목록</a>으로 돌아가세요.</p>
+    {% else %}
+      <h4>아직 게시물이 없습니다</h4>
+      <p>첫 번째 게시물을 작성해 보세요.<br>커뮤니티의 의견을 공유하고 민원을 접수할 수 있습니다.</p>
+      {% if current_user.is_authenticated %}
+        <a class="btn" href="{{ url_for('posts_new') }}" style="margin-top: 4px;">첫 글 작성하기</a>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
 
+  <!-- 페이지네이션 -->
+  {% if posts %}
   <div class="pagination">
     {% if pagination.has_prev %}
-      <a class="btn btn-subtle" href="{{ url_for('posts_list', page=pagination.prev_num, q=q, category=category) }}">이전</a>
+      <a class="btn btn-subtle" href="{{ url_for('posts_list', page=pagination.prev_num, q=q, category=category) }}" aria-label="이전 페이지">
+        &lsaquo; 이전
+      </a>
     {% endif %}
     <span class="small">페이지 {{ pagination.page }} / {{ pagination.pages if pagination.pages else 1 }}</span>
     {% if pagination.has_next %}
-      <a class="btn btn-subtle" href="{{ url_for('posts_list', page=pagination.next_num, q=q, category=category) }}">다음</a>
+      <a class="btn btn-subtle" href="{{ url_for('posts_list', page=pagination.next_num, q=q, category=category) }}" aria-label="다음 페이지">
+        다음 &rsaquo;
+      </a>
     {% endif %}
   </div>
+  {% endif %}
 </div>
 {% endblock %}

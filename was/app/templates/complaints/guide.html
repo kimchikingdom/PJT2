@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}민원 유형 가이드{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <p class="eyebrow">Complaint Guide</p>
+      <h2>민원 유형별 안내 및 처리기한(SLA)</h2>
+    </div>
+    <a class="btn" href="{{ url_for('complaints_new') if current_user.is_authenticated else url_for('login') }}">민원 접수</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>유형</th><th>설명</th><th>필수 정보</th><th>처리기한</th></tr></thead>
+      <tbody>
+        {% for item in guide_items %}
+        <tr>
+          <td>{{ item.category }}</td>
+          <td class="text-wrap">{{ item.description }}</td>
+          <td class="text-wrap">{{ item.required_docs }}</td>
+          <td>{{ item.sla_days }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

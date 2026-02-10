@@ -16,9 +16,26 @@
         <span class="brand-badge">PH</span>
         <strong>공공 의료 민원 포털</strong>
       </a>
-      <nav class="nav-links">
+
+      <!-- 햄버거 버튼: 모바일에서만 표시 -->
+      <button
+        class="hamburger"
+        id="nav-toggle"
+        aria-label="메뉴 열기/닫기"
+        aria-expanded="false"
+        aria-controls="nav-menu"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="nav-links" id="nav-menu" role="navigation" aria-label="주요 메뉴">
         <a class="nav-link" href="{{ url_for('health_info') }}">의료정보</a>
         <a class="nav-link" href="{{ url_for('health_centers') }}">지역센터</a>
+        <a class="nav-link" href="{{ url_for('health_calendar') }}">예방/검진일정</a>
+        <a class="nav-link" href="{{ url_for('support_programs') }}">의료비지원</a>
+        <a class="nav-link" href="{{ url_for('complaints_guide') }}">민원가이드</a>
         <a class="nav-link" href="{{ url_for('posts_list') }}">게시판</a>
         <a class="nav-link" href="{{ url_for('notices_list') }}">공지사항</a>
         {% if current_user.is_authenticated %}
@@ -27,7 +44,6 @@
           {% if current_user.role == 'admin' %}
             <a class="nav-link" href="{{ url_for('admin_dashboard') }}">관리자</a>
             <a class="nav-link" href="{{ url_for('admin_logs') }}">로그 모니터링</a>
-            <a class="nav-link" href="{{ url_for('security_scenarios') }}">OWASP 시나리오</a>
           {% endif %}
           <a class="nav-link" href="{{ url_for('logout') }}">로그아웃</a>
           <span class="role-chip">{{ current_user.username }} · {{ current_user.role }}</span>
@@ -39,12 +55,22 @@
     </div>
   </header>
 
+  {% if emergency_banner and emergency_banner.active %}
+  <div class="container" style="margin-top: 10px;">
+    <div class="alert alert-info" role="status" style="margin-bottom: 0;">
+      <strong>{{ emergency_banner.title }}</strong>
+      <span> {{ emergency_banner.message }} </span>
+      <span class="small">({{ emergency_banner.contact }})</span>
+    </div>
+  </div>
+  {% endif %}
+
   <main>
     <div class="container">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
+            <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
           {% endfor %}
         {% endif %}
       {% endwith %}
@@ -57,5 +83,39 @@
   <footer class="container footer">
     교육/실습용 시스템입니다. 실제 민감 정보는 입력하지 마세요.
   </footer>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('nav-toggle');
+      var menu = document.getElementById('nav-menu');
+      if (!btn || !menu) return;
+
+      btn.addEventListener('click', function () {
+        var isOpen = menu.classList.toggle('is-open');
+        btn.classList.toggle('is-open', isOpen);
+        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        btn.setAttribute('aria-label', isOpen ? '메뉴 닫기' : '메뉴 열기/닫기');
+      });
+
+      // 메뉴 외부 클릭 시 닫기
+      document.addEventListener('click', function (e) {
+        if (!btn.contains(e.target) && !menu.contains(e.target)) {
+          menu.classList.remove('is-open');
+          btn.classList.remove('is-open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // ESC 키로 메뉴 닫기
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          menu.classList.remove('is-open');
+          btn.classList.remove('is-open');
+          btn.setAttribute('aria-expanded', 'false');
+          btn.focus();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}관리자 대시보드{% endblock %}
+{% block title %}관리자 대시보드 | 공공 의료 민원 포털{% endblock %}
 
 {% block hero %}
 <section class="hero">
@@ -10,72 +10,211 @@
 {% endblock %}
 
 {% block content %}
+
+<!-- 통계 카드 grid-4 -->
+<div class="grid grid-4" style="margin-bottom: 14px;">
+
+  <!-- 사용자 수 -->
+  <div class="stat-card">
+    <div class="stat-card-icon users" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    </div>
+    <div class="stat-card-body">
+      <div class="stat-card-label">사용자 수</div>
+      <div class="stat-card-value">{{ stats.users }}</div>
+    </div>
+  </div>
+
+  <!-- 게시물 수 -->
+  <div class="stat-card">
+    <div class="stat-card-icon posts" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+    </div>
+    <div class="stat-card-body">
+      <div class="stat-card-label">게시물 수</div>
+      <div class="stat-card-value">{{ stats.posts }}</div>
+    </div>
+  </div>
+
+  <!-- 공지 수 -->
+  <div class="stat-card">
+    <div class="stat-card-icon notices" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+    </div>
+    <div class="stat-card-body">
+      <div class="stat-card-label">공지 수</div>
+      <div class="stat-card-value">{{ stats.notices }}</div>
+    </div>
+  </div>
+
+  <!-- 민원 수 -->
+  <div class="stat-card">
+    <div class="stat-card-icon complaints" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    </div>
+    <div class="stat-card-body">
+      <div class="stat-card-label">민원 수</div>
+      <div class="stat-card-value">{{ stats.complaints }}</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 민원 처리 현황 + 관리 메뉴 (2컬럼) -->
 <div class="grid grid-2">
-  <section class="quick-stat"><span class="small">사용자 수</span><b>{{ stats.users }}</b></section>
-  <section class="quick-stat"><span class="small">게시물 수</span><b>{{ stats.posts }}</b></section>
-  <section class="quick-stat"><span class="small">공지 수</span><b>{{ stats.notices }}</b></section>
-  <section class="quick-stat"><span class="small">민원 수</span><b>{{ stats.complaints }}</b></section>
-</div>
 
-<div class="card">
-  <h3>민원 처리 현황</h3>
-  <p><strong>미처리/검토중 건수:</strong> {{ stats.complaints_pending }}</p>
-  <div class="table-wrap">
-    <table class="table">
-      <thead><tr><th>카테고리</th><th>건수</th></tr></thead>
-      <tbody>
-        {% for category, count in complaint_category_stats %}
-        <tr>
-          <td>{{ complaint_category_labels.get(category, category) }}</td>
-          <td>{{ count }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="2">집계할 민원이 없습니다.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- 민원 처리 현황 -->
+  <div class="card" style="margin-bottom: 0;">
+    <div class="split">
+      <h3>민원 처리 현황</h3>
+      <span class="badge badge-in_review">미처리 {{ stats.complaints_pending }}건</span>
+    </div>
+    <div class="table-wrap" style="margin-top: 12px;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">카테고리</th>
+            <th scope="col" style="text-align: right;">건수</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for category, count in complaint_category_stats %}
+          <tr>
+            <td>{{ complaint_category_labels.get(category, category) }}</td>
+            <td style="text-align: right; font-weight: 600;">{{ count }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="2">
+              <div class="empty-state" style="padding: 24px;">
+                <span class="small">집계할 민원이 없습니다.</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
 
-<div class="card">
-  <div class="split">
+  <!-- 관리 메뉴 -->
+  <div class="card" style="margin-bottom: 0;">
     <h3>관리 메뉴</h3>
-    <span class="small">운영 작업 바로가기</span>
+    <p class="small" style="margin-bottom: 14px;">운영 작업 바로가기</p>
+    <div class="admin-nav-grid">
+      <a class="admin-nav-item" href="{{ url_for('admin_users') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        사용자 관리
+      </a>
+      <a class="admin-nav-item" href="{{ url_for('admin_posts') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        게시물 관리
+      </a>
+      <a class="admin-nav-item" href="{{ url_for('admin_notices') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        공지 관리
+      </a>
+      <a class="admin-nav-item" href="{{ url_for('admin_complaints') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        민원 관리
+      </a>
+      <a class="admin-nav-item" href="{{ url_for('admin_logs') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="12" y1="17" x2="8" y2="17"/>
+          <line x1="8" y1="9" x2="8" y2="9"/>
+        </svg>
+        로그 모니터링
+      </a>
+    </div>
   </div>
-  <div class="inline-actions">
-    <a class="btn" href="{{ url_for('admin_users') }}">사용자 관리</a>
-    <a class="btn" href="{{ url_for('admin_posts') }}">게시물 관리</a>
-    <a class="btn" href="{{ url_for('admin_notices') }}">공지 관리</a>
-    <a class="btn" href="{{ url_for('admin_complaints') }}">민원 관리</a>
-    <a class="btn" href="{{ url_for('admin_logs') }}">로그 모니터링</a>
-    <a class="btn" href="{{ url_for('security_scenarios') }}">OWASP 시나리오</a>
-  </div>
+
 </div>
 
+<!-- 최근 감사 로그 -->
 <div class="card">
   <div class="split">
     <h3>최근 감사 로그</h3>
-    <a class="btn btn-subtle" href="{{ url_for('admin_logs') }}">전체 로그 보기</a>
+    <a class="btn btn-subtle" href="{{ url_for('admin_logs') }}" style="font-size: 0.85rem;">전체 로그 보기</a>
   </div>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>시간</th><th>행동</th><th>대상</th><th>ID</th><th>메타</th></tr></thead>
+      <thead>
+        <tr>
+          <th scope="col">시간</th>
+          <th scope="col">행동</th>
+          <th scope="col">대상</th>
+          <th scope="col">ID</th>
+          <th scope="col">메타</th>
+        </tr>
+      </thead>
       <tbody>
         {% for log in logs %}
         <tr>
-          <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-          <td>{{ log.action }}</td>
+          <td style="white-space: nowrap; font-size: 0.82rem; color: var(--muted);">{{ log.created_at|kst_datetime }}</td>
+          <td><span class="badge badge-in_review">{{ log.action }}</span></td>
           <td>{{ log.target_type or '-' }}</td>
           <td>{{ log.target_id or '-' }}</td>
-          <td class="text-wrap">{{ log.meta or '-' }}</td>
+          <td class="text-wrap" style="max-width: 260px; font-size: 0.85rem; color: var(--muted);">{{ log.meta or '-' }}</td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-wrap">기록된 로그가 없습니다.</td>
+          <td colspan="5">
+            <div class="empty-state" style="padding: 28px;">
+              <span class="small">기록된 로그가 없습니다.</span>
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
 {% endblock %}

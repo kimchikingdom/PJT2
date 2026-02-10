@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}의료비 지원사업{% endblock %}
+
+{% block content %}
+<div class="card">
+  <p class="eyebrow">Medical Support Programs</p>
+  <h2>공공 의료비 지원사업 안내</h2>
+  <p class="small">저소득층, 중증질환, 산모/영유아 대상 지원사업 정보를 제공합니다.</p>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>사업명</th><th>지원대상</th><th>지원내용</th><th>신청방법</th><th>문의</th></tr></thead>
+      <tbody>
+        {% for item in programs %}
+        <tr>
+          <td class="text-wrap">{{ item.name }}</td>
+          <td>{{ item.target }}</td>
+          <td class="text-wrap">{{ item.benefit }}</td>
+          <td class="text-wrap">{{ item.how_to_apply }}</td>
+          <td>{{ item.contact }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

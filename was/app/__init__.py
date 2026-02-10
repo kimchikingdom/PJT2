@@ -19,10 +19,22 @@ def create_app(config_override=None):
             "DATABASE_URL", "sqlite:///local_dev.db"
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        MAX_CONTENT_LENGTH=10 * 1024 * 1024,
+        POST_UPLOAD_DIR=os.environ.get(
+            "POST_UPLOAD_DIR",
+            os.path.join(os.path.dirname(__file__), "static", "uploads", "posts"),
+        ),
+        PROFILE_UPLOAD_DIR=os.environ.get(
+            "PROFILE_UPLOAD_DIR",
+            os.path.join(os.path.dirname(__file__), "static", "uploads", "profiles"),
+        ),
     )
 
     if config_override:
         app.config.update(config_override)
+
+    os.makedirs(app.config["POST_UPLOAD_DIR"], exist_ok=True)
+    os.makedirs(app.config["PROFILE_UPLOAD_DIR"], exist_ok=True)
 
     db.init_app(app)
     login_manager.init_app(app)

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}민원 FAQ{% endblock %}
+
+{% block content %}
+<div class="card">
+  <p class="eyebrow">Complaint FAQ</p>
+  <h2>민원 처리 단계별 안내</h2>
+  <div class="grid grid-2">
+    {% for item in status_faq %}
+    <section class="card" style="background: var(--surface-soft); box-shadow: none; margin-bottom: 0;">
+      <h3>{{ item.title }} ({{ item.status }})</h3>
+      <p class="small">{{ item.description }}</p>
+    </section>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>자주 묻는 질문</h3>
+  {% for faq in health_faq %}
+  <div class="card" style="margin: 10px 0; background: var(--surface-soft); box-shadow: none;">
+    <p><strong>Q. {{ faq.question }}</strong></p>
+    <p class="muted">A. {{ faq.answer }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

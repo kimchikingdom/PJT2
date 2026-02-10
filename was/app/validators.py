@@ -56,10 +56,11 @@ def validate_registration(username, email, full_name, phone, password):
     return errors
 
 
-def validate_profile(full_name, phone):
+def validate_profile(full_name, phone, email=None):
     errors = []
     full_name = (full_name or "").strip()
     phone = (phone or "").strip()
+    email = (email or "").strip()
     if not full_name:
         errors.append("이름을 입력해주세요.")
     if not phone:
@@ -68,6 +69,8 @@ def validate_profile(full_name, phone):
         errors.append("이름은 100자 이하여야 합니다.")
     if phone and not (7 <= len(phone) <= 20):
         errors.append("연락처는 7~20자여야 합니다.")
+    if email and not EMAIL_RE.match(email):
+        errors.append("이메일 형식이 올바르지 않습니다.")
     return errors
 
 

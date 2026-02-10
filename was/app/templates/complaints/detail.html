@@ -153,6 +153,8 @@
 {% endif %}
 
 <div class="inline-actions">
+  <a class="btn" href="{{ url_for('complaint_report_pdf', complaint_id=complaint.id) }}">결과 리포트 PDF</a>
+  <a class="btn btn-subtle" href="{{ url_for('complaints_faq') }}">처리 단계 FAQ</a>
   <a class="btn btn-subtle" href="{{ url_for('complaints_list') }}">목록으로</a>
 </div>
 {% endblock %}

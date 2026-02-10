@@ -123,6 +123,11 @@
 - When: `/posts?category=digital_service` 접근
 - Then: 해당 분류 게시물만 목록에 표시
 
+### TC-POST-07 게시물 첨부파일 업로드/다운로드
+- Given: 로그인 상태
+- When: `/posts/new`에서 파일 첨부 후 게시물 생성, 상세에서 다운로드 수행
+- Then: 첨부파일이 저장되고 다운로드 응답이 정상 반환된다
+
 ### TC-NOTI-01 공지 사용자 목록
 - Given: 공개/비공개 공지 존재
 - When: 일반 사용자 `/notices`
@@ -157,6 +162,16 @@
 - Given: 사용자별 민원 존재
 - When: `/complaints` 접근
 - Then: 본인 민원만 보임
+
+### TC-COMP-04 민원 가이드/FAQ 접근
+- Given: 비로그인 또는 로그인 사용자
+- When: `/complaints/guide`, `/complaints/faq` 접근
+- Then: 민원 유형(SLA 포함)과 처리 단계 FAQ가 정상 렌더링된다
+
+### TC-COMP-05 민원 결과 PDF 다운로드
+- Given: 본인 민원 1건 이상 존재
+- When: `/complaints/{id}/report.pdf` 접근
+- Then: `application/pdf` 응답이 반환되고 파일 다운로드가 가능하다
 
 ## P1 운영/품질
 
@@ -250,6 +265,11 @@
 - Given: 비로그인 또는 로그인 사용자
 - When: `/health-programs/vaccination` 접근
 - Then: 상세 정보 노출, 존재하지 않는 ID는 404
+
+### TC-HEALTH-03 공공의료 고도화 안내 페이지 접근
+- Given: 비로그인 또는 로그인 사용자
+- When: `/health-calendar`, `/support-programs`, `/records/procedure` 접근
+- Then: 예방/검진 일정, 의료비 지원사업, 의무기록/개인정보 절차 페이지가 정상 렌더링된다
 
 ### TC-OPS-01 3티어 계층 기동
 - Given: Docker 환경 정상

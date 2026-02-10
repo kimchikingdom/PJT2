@@ -1,24 +1,115 @@
 {% extends 'base.html' %}
 {% block title %}마이페이지{% endblock %}
 {% block content %}
+{% set profile_image_url = url_for('static', filename='uploads/profiles/' ~ current_user.profile_image_name) if current_user.profile_image_name else None %}
+
 <div class="grid grid-2">
   <section class="card">
     <p class="eyebrow">Account</p>
     <h2>내 계정 정보</h2>
-    <p><strong>아이디</strong> {{ current_user.username }}</p>
-    <p><strong>이메일</strong> {{ current_user.email }}</p>
-    <p><strong>권한</strong> {{ current_user.role }}</p>
-    <p class="small">생성일 {{ current_user.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+    <div class="profile-header">
+      {% if profile_image_url %}
+      <img class="profile-avatar" src="{{ profile_image_url }}" alt="프로필 이미지">
+      {% else %}
+      <div class="profile-avatar profile-avatar-placeholder">{{ current_user.username[:1]|upper }}</div>
+      {% endif %}
+      <div>
+        <p><strong>아이디</strong> {{ current_user.username }}</p>
+        <p><strong>이메일</strong> {{ current_user.email }}</p>
+        <p><strong>권한</strong> {{ current_user.role }}</p>
+        <p class="small">생성일 {{ current_user.created_at|kst_datetime('%Y-%m-%d %H:%M') }}</p>
+      </div>
+    </div>
+    <div class="agreement-status">
+      <p class="small"><strong>필수 약관</strong> {% if current_user.required_terms_agreed %}동의{% else %}미동의{% endif %}{% if current_user.required_terms_agreed_at %} ({{ current_user.required_terms_agreed_at|kst_datetime('%Y-%m-%d %H:%M') }}){% endif %}</p>
+      <p class="small"><strong>선택 약관</strong> {% if current_user.optional_terms_agreed %}동의{% else %}철회{% endif %}{% if current_user.optional_terms_agreed_at %} ({{ current_user.optional_terms_agreed_at|kst_datetime('%Y-%m-%d %H:%M') }}){% endif %}</p>
+    </div>
   </section>
 
   <section class="card">
     <p class="eyebrow">Profile</p>
-    <h2>프로필 수정</h2>
-    <form class="form" method="post">
+    <h2>개인정보/약관/이미지 수정</h2>
+    <form class="form" method="post" enctype="multipart/form-data">
       <label>이름<input name="full_name" value="{{ current_user.full_name }}" required></label>
       <label>연락처<input name="phone" value="{{ current_user.phone }}" required></label>
+      <label>이메일<input name="email" type="email" value="{{ current_user.email }}" required></label>
+
+      <label>프로필 이미지
+        <input name="profile_image" type="file" accept=".jpg,.jpeg,.png,.gif,.webp">
+      </label>
+      <label class="checkline">
+        <input type="checkbox" name="remove_profile_image">
+        기존 프로필 이미지 삭제
+      </label>
+
+      <label class="checkline">
+        <input type="checkbox" name="agree_optional_terms" {% if current_user.optional_terms_agreed %}checked{% endif %}>
+        (선택) 맞춤 알림 약관 동의
+      </label>
+      <p class="small">선택 약관은 이 체크박스로 언제든지 동의/철회할 수 있습니다.</p>
+
+      <label>추가 인증(현재 비밀번호)
+        <input name="current_password" type="password" required autocomplete="current-password" placeholder="수정을 위해 현재 비밀번호 입력">
+      </label>
       <button type="submit">저장</button>
     </form>
+  </section>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="split">
+      <div>
+        <p class="eyebrow">My Posts</p>
+        <h3>내가 작성한 게시글</h3>
+      </div>
+      <a class="btn btn-subtle" href="{{ url_for('posts_list') }}">게시판 이동</a>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>ID</th><th>분류</th><th>제목</th><th>작성일</th></tr></thead>
+        <tbody>
+          {% for post in my_posts %}
+          <tr>
+            <td>{{ post.id }}</td>
+            <td>{{ post_category_labels.get(post.category, post.category) }}</td>
+            <td class="text-wrap"><a href="{{ url_for('posts_detail', post_id=post.id) }}">{{ post.title }}</a></td>
+            <td>{{ post.created_at|kst_datetime('%Y-%m-%d %H:%M') }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-wrap">작성한 게시글이 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="split">
+      <div>
+        <p class="eyebrow">My Complaints</p>
+        <h3>내가 작성한 민원</h3>
+      </div>
+      <a class="btn btn-subtle" href="{{ url_for('complaints_list') }}">민원 목록 이동</a>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>ID</th><th>유형</th><th>제목</th><th>상태</th><th>작성일</th></tr></thead>
+        <tbody>
+          {% for complaint in my_complaints %}
+          <tr>
+            <td>{{ complaint.id }}</td>
+            <td>{{ complaint_category_labels.get(complaint.category, complaint.category) }}</td>
+            <td class="text-wrap"><a href="{{ url_for('complaints_detail', complaint_id=complaint.id) }}">{{ complaint.title }}</a></td>
+            <td><span class="badge badge-{{ complaint.status }}">{{ complaint.status }}</span></td>
+            <td>{{ complaint.created_at|kst_datetime('%Y-%m-%d %H:%M') }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-wrap">작성한 민원이 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 </div>
 
@@ -46,7 +137,7 @@
     {% set cost = mydata.get('costSummary', {}) %}
     {% set alerts = mydata.get('alerts', []) %}
     {% set profile = mydata.get('profile', {}) %}
-    <p class="small">최근 동기화: {{ mydata_snapshot.fetched_at.strftime('%Y-%m-%d %H:%M:%S') }} / 출처: {{ mydata_snapshot.source }}</p>
+    <p class="small">최근 동기화: {{ mydata_snapshot.fetched_at|kst_datetime }} / 출처: {{ mydata_snapshot.source }}</p>
 
     <div class="grid grid-3">
       <section class="quick-stat mydata-kpi">
@@ -94,6 +185,25 @@
         <li>이상 징후 없음</li>
         {% endfor %}
       </ul>
+    </div>
+
+    <div class="card">
+      <h3>본인부담금 추이(월별)</h3>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>월</th><th>본인부담금</th></tr></thead>
+          <tbody>
+            {% for m in cost.get('monthly', []) %}
+            <tr>
+              <td>{{ m.month }}</td>
+              <td>{{ "{:,}".format(m.outOfPocket) }}원</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="2" class="text-wrap">월별 데이터가 없습니다.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="table-wrap">

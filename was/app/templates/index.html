@@ -2,7 +2,7 @@
 {% block title %}메인 | 공공 의료 민원 포털{% endblock %}
 
 {% block hero %}
-<section class="hero">
+<section class="hero hero-main">
   <p class="eyebrow">Public Health Service</p>
   <h1>공공의료 정보와 민원 처리를 한 곳에서 관리하는 포털</h1>
   <p>예방접종, 의료비 지원, 정신건강 연계 등 공공 의료정보를 확인하고 의료 민원을 온라인으로 접수/추적할 수 있습니다.</p>
@@ -14,6 +14,7 @@
 {% endblock %}
 
 {% block content %}
+<div class="home-section-stack">
 <div class="grid grid-3">
   <section class="quick-stat">
     <span class="small">서비스 분야</span>
@@ -76,6 +77,84 @@
 <div class="grid grid-2">
   <section class="card">
     <div class="split">
+      <h3>민원 유형 가이드 + 처리기한</h3>
+      <a class="btn btn-subtle" href="{{ url_for('complaints_guide') }}">전체 가이드</a>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>유형</th><th>설명</th><th>처리기한</th></tr></thead>
+        <tbody>
+          {% for item in complaint_type_guide %}
+          <tr>
+            <td>{{ item.category }}</td>
+            <td class="text-wrap">{{ item.description }}</td>
+            <td>{{ item.sla_days }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="split">
+      <h3>예방접종/검진 일정</h3>
+      <a class="btn btn-subtle" href="{{ url_for('health_calendar') }}">일정 보기</a>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>월</th><th>일정</th><th>대상</th></tr></thead>
+        <tbody>
+          {% for item in schedule_preview %}
+          <tr>
+            <td>{{ item.month }}</td>
+            <td class="text-wrap">{{ item.title }}</td>
+            <td>{{ item.target }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="split">
+      <h3>의료비 지원사업 안내</h3>
+      <a class="btn btn-subtle" href="{{ url_for('support_programs') }}">상세 보기</a>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>사업명</th><th>대상</th><th>지원</th></tr></thead>
+        <tbody>
+          {% for p in support_preview %}
+          <tr>
+            <td class="text-wrap">{{ p.name }}</td>
+            <td>{{ p.target }}</td>
+            <td class="text-wrap">{{ p.benefit }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="split">
+      <h3>의무기록/개인정보 절차 안내</h3>
+      <a class="btn btn-subtle" href="{{ url_for('records_procedure') }}">절차 보기</a>
+    </div>
+    <p class="small">
+      의무기록 열람·정정, 개인정보 처리 문의는 본인확인 절차 후 처리됩니다.
+      처리 상태 설명이 필요한 경우 <a href="{{ url_for('complaints_faq') }}">민원 FAQ</a>를 확인하세요.
+    </p>
+  </section>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="split">
       <h3>최근 공지사항</h3>
       <a class="btn btn-subtle" href="{{ url_for('notices_list') }}">전체 보기</a>
     </div>
@@ -122,5 +201,7 @@
       <p class="muted">등록된 게시물이 없습니다.</p>
     {% endif %}
   </section>
+</div>
+
 </div>
 {% endblock %}

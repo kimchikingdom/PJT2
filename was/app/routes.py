@@ -1,13 +1,54 @@
 import json
+from io import BytesIO
+import os
+import uuid
+from datetime import UTC
 from functools import wraps
+from zoneinfo import ZoneInfo
 
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import (
+    abort,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    Response,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
 from flask_login import current_user, login_required, login_user, logout_user
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+from reportlab.pdfgen import canvas
 from sqlalchemy import func, or_
+from werkzeug.utils import secure_filename
 
 from app import db
-from app.health_content import HEALTH_FAQ, HEALTH_NEWS, HEALTH_PROGRAMS, REGIONAL_CENTERS
-from app.models import AuditLog, Complaint, MyDataSnapshot, Notice, Post, User, utc_now
+from app.health_content import (
+    COMPLAINT_STATUS_FAQ,
+    COMPLAINT_TYPE_GUIDE,
+    EMERGENCY_BANNER,
+    HEALTH_FAQ,
+    HEALTH_NEWS,
+    HEALTH_PROGRAMS,
+    MEDICAL_SUPPORT_PROGRAMS,
+    RECORDS_PRIVACY_PROCEDURE,
+    REGIONAL_CENTERS,
+    VACCINATION_CHECKUP_CALENDAR,
+)
+from app.models import (
+    AuditLog,
+    Complaint,
+    MyDataSnapshot,
+    Notice,
+    Post,
+    PostAttachment,
+    User,
+    utc_now,
+)
 from app.mydata_mock import generate_mock_medical_mydata
 from app.security_catalog import OWASP_TOP10_SCENARIOS
 from app.validators import (
@@ -44,6 +85,7 @@ COMPLAINT_CATEGORY_LABELS = {
 }
 
 LOG_EVENT_OPTIONS = {
+    "login_attempt",
     "login",
     "login_failed",
     "logout",
@@ -51,14 +93,36 @@ LOG_EVENT_OPTIONS = {
     "post_create",
     "post_update",
     "post_delete",
+    "post_attachment_upload",
+    "post_attachment_delete",
     "complaint_create",
     "complaint_status_update",
+    "complaint_report_download",
     "notice_create",
     "notice_toggle_publish",
     "user_role_update",
     "web_request",
     "mydata_fetch",
 }
+
+KST = ZoneInfo("Asia/Seoul")
+
+POST_ATTACHMENT_ALLOWED_EXTENSIONS = {
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "pdf",
+    "txt",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "hwp",
+    "hwpx",
+}
+
+PROFILE_IMAGE_ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 
 def admin_required(func):
@@ -93,6 +157,36 @@ def log_action(action, target_type=None, target_id=None, meta=None, actor_id=Non
         db.session.rollback()
 
 
+def to_kst(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(KST)
+
+
+def format_kst_datetime(dt, fmt="%Y-%m-%d %H:%M:%S"):
+    converted = to_kst(dt)
+    if converted is None:
+        return "-"
+    return converted.strftime(fmt)
+
+
+def build_login_meta(username, result, client_ip, user_agent, reason=None):
+    safe_username = (username or "-")[:50]
+    safe_ua = (user_agent or "-")[:140]
+    meta_parts = [
+        "endpoint=/login",
+        f"username={safe_username}",
+        f"result={result}",
+        f"ip={client_ip or '-'}",
+        f"ua={safe_ua}",
+    ]
+    if reason:
+        meta_parts.append(f"reason={reason}")
+    return ";".join(meta_parts)
+
+
 def flash_errors(errors):
     for message in errors:
         flash(message, "danger")
@@ -103,7 +197,151 @@ def parse_page(default=1):
     return page if page and page > 0 else default
 
 
+def validate_attachment_files(file_storage_list):
+    validated = []
+    errors = []
+
+    for file_storage in file_storage_list:
+        original_name = (file_storage.filename or "").strip()
+        if not original_name:
+            continue
+
+        safe_name = secure_filename(original_name)
+        if not safe_name:
+            errors.append("파일명 형식이 올바르지 않은 첨부파일이 있습니다.")
+            continue
+        if "." not in safe_name:
+            errors.append(f"확장자가 없는 파일은 업로드할 수 없습니다: {original_name}")
+            continue
+
+        extension = safe_name.rsplit(".", 1)[1].lower()
+        if extension not in POST_ATTACHMENT_ALLOWED_EXTENSIONS:
+            errors.append(f"지원하지 않는 파일 형식입니다: {original_name}")
+            continue
+
+        validated.append((file_storage, safe_name, original_name))
+
+    return validated, errors
+
+
+def persist_post_attachments(post_id, validated_files):
+    created = []
+    for file_storage, safe_name, original_name in validated_files:
+        stored_name = f"{uuid.uuid4().hex}_{safe_name}"
+        upload_path = os.path.join(current_app.config["POST_UPLOAD_DIR"], stored_name)
+        file_storage.save(upload_path)
+        created.append(
+            PostAttachment(
+                post_id=post_id,
+                original_name=original_name[:255],
+                stored_name=stored_name,
+                mime_type=file_storage.mimetype,
+                file_size=os.path.getsize(upload_path) if os.path.exists(upload_path) else 0,
+            )
+        )
+    return created
+
+
+def remove_attachment_file(stored_name):
+    file_path = os.path.join(current_app.config["POST_UPLOAD_DIR"], stored_name)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+
+def validate_profile_image_file(file_storage):
+    if file_storage is None:
+        return None, None
+    original_name = (file_storage.filename or "").strip()
+    if not original_name:
+        return None, None
+    safe_name = secure_filename(original_name)
+    if not safe_name or "." not in safe_name:
+        return None, "프로필 이미지 파일명이 올바르지 않습니다."
+    extension = safe_name.rsplit(".", 1)[1].lower()
+    if extension not in PROFILE_IMAGE_ALLOWED_EXTENSIONS:
+        return None, "프로필 이미지는 jpg/jpeg/png/gif/webp 형식만 업로드할 수 있습니다."
+    stored_name = f"profile_{uuid.uuid4().hex}.{extension}"
+    return {
+        "safe_name": safe_name,
+        "stored_name": stored_name,
+        "extension": extension,
+    }, None
+
+
+def remove_profile_image_file(stored_name):
+    if not stored_name:
+        return
+    file_path = os.path.join(current_app.config["PROFILE_UPLOAD_DIR"], stored_name)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+
+def save_profile_image(file_storage, stored_name):
+    upload_path = os.path.join(current_app.config["PROFILE_UPLOAD_DIR"], stored_name)
+    file_storage.save(upload_path)
+
+
+def build_complaint_report_pdf(complaint):
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    font_name = "Helvetica"
+    try:
+        pdfmetrics.registerFont(UnicodeCIDFont("HYSMyeongJo-Medium"))
+        font_name = "HYSMyeongJo-Medium"
+    except Exception:
+        pass
+
+    y = height - 48
+    pdf.setFont(font_name, 16)
+    pdf.drawString(40, y, "공공의료 민원 처리 결과 리포트")
+
+    y -= 28
+    pdf.setFont(font_name, 11)
+    lines = [
+        f"Complaint ID: {complaint.id}",
+        f"Title: {complaint.title}",
+        f"Category: {COMPLAINT_CATEGORY_LABELS.get(complaint.category, complaint.category)}",
+        f"Status: {complaint.status}",
+        f"Created At: {complaint.created_at.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"Updated At: {complaint.updated_at.strftime('%Y-%m-%d %H:%M:%S') if complaint.updated_at else '-'}",
+        f"Assigned Admin: {complaint.assigned_admin.username if complaint.assigned_admin else '-'}",
+    ]
+    for line in lines:
+        pdf.drawString(40, y, line[:110])
+        y -= 18
+
+    y -= 6
+    pdf.setFont(font_name, 12)
+    pdf.drawString(40, y, "민원 내용")
+    y -= 18
+
+    pdf.setFont(font_name, 10)
+    content_lines = (complaint.content or "").splitlines() or [""]
+    for content_line in content_lines:
+        chunk = content_line
+        while chunk:
+            part = chunk[:90]
+            chunk = chunk[90:]
+            if y < 48:
+                pdf.showPage()
+                y = height - 48
+                pdf.setFont(font_name, 10)
+            pdf.drawString(40, y, part)
+            y -= 14
+
+    pdf.showPage()
+    pdf.save()
+    buffer.seek(0)
+    return buffer.read()
+
+
 def init_routes(app):
+    @app.template_filter("kst_datetime")
+    def kst_datetime_filter(value, fmt="%Y-%m-%d %H:%M:%S"):
+        return format_kst_datetime(value, fmt)
+
     @app.after_request
     def capture_web_request(response):
         endpoint = request.endpoint or ""
@@ -127,6 +365,10 @@ def init_routes(app):
         )
         return response
 
+    @app.context_processor
+    def inject_global_banner():
+        return {"emergency_banner": EMERGENCY_BANNER}
+
     @app.route("/")
     def index():
         latest_notices = Notice.query.filter_by(is_published=True).order_by(Notice.created_at.desc()).limit(5).all()
@@ -139,6 +381,9 @@ def init_routes(app):
             health_news=HEALTH_NEWS[:3],
             highlighted_programs=highlighted_programs,
             post_category_labels=POST_CATEGORY_LABELS,
+            complaint_type_guide=COMPLAINT_TYPE_GUIDE[:3],
+            schedule_preview=VACCINATION_CHECKUP_CALENDAR[:3],
+            support_preview=MEDICAL_SUPPORT_PROGRAMS[:3],
         )
 
     @app.route("/health-info")
@@ -155,6 +400,27 @@ def init_routes(app):
         return render_template(
             "health/centers.html",
             centers=REGIONAL_CENTERS,
+        )
+
+    @app.route("/health-calendar")
+    def health_calendar():
+        return render_template(
+            "health/calendar.html",
+            schedules=VACCINATION_CHECKUP_CALENDAR,
+        )
+
+    @app.route("/support-programs")
+    def support_programs():
+        return render_template(
+            "health/support_programs.html",
+            programs=MEDICAL_SUPPORT_PROGRAMS,
+        )
+
+    @app.route("/records/procedure")
+    def records_procedure():
+        return render_template(
+            "health/records_procedure.html",
+            procedures=RECORDS_PRIVACY_PROCEDURE,
         )
 
     @app.route("/health-programs/<string:program_id>")
@@ -175,8 +441,12 @@ def init_routes(app):
             full_name = request.form.get("full_name", "").strip()
             phone = request.form.get("phone", "").strip()
             password = request.form.get("password", "")
+            agree_required_terms = request.form.get("agree_required_terms") == "on"
+            agree_optional_terms = request.form.get("agree_optional_terms") == "on"
 
             errors = validate_registration(username, email, full_name, phone, password)
+            if not agree_required_terms:
+                errors.append("필수 약관 동의가 필요합니다.")
             if errors:
                 flash_errors(errors)
                 return redirect(url_for("register"))
@@ -190,6 +460,10 @@ def init_routes(app):
                 email=email,
                 full_name=full_name,
                 phone=phone,
+                required_terms_agreed=True,
+                required_terms_agreed_at=utc_now(),
+                optional_terms_agreed=agree_optional_terms,
+                optional_terms_agreed_at=utc_now() if agree_optional_terms else None,
                 role="user",
             )
             user.set_password(password)
@@ -210,27 +484,97 @@ def init_routes(app):
 
         return render_template("auth/register.html")
 
+    @app.route("/register/check-duplicate")
+    def register_check_duplicate():
+        field = request.args.get("field", "").strip().lower()
+        value = request.args.get("value", "").strip()
+        if field not in {"username", "email"}:
+            return jsonify(
+                {
+                    "ok": False,
+                    "available": False,
+                    "message": "지원하지 않는 중복 확인 항목입니다.",
+                }
+            ), 400
+        if not value:
+            return jsonify(
+                {
+                    "ok": False,
+                    "field": field,
+                    "available": False,
+                    "message": "확인할 값을 입력하세요.",
+                }
+            ), 400
+
+        if field == "username":
+            exists = User.query.filter_by(username=value).first() is not None
+        else:
+            exists = (
+                User.query.filter(func.lower(User.email) == value.lower()).first() is not None
+            )
+
+        return jsonify(
+            {
+                "ok": True,
+                "field": field,
+                "value": value,
+                "available": not exists,
+                "message": (
+                    "사용 가능한 값입니다."
+                    if not exists
+                    else "이미 사용 중인 값입니다."
+                ),
+            }
+        )
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if request.method == "POST":
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
+            client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or "-"
+            user_agent = request.user_agent.string if request.user_agent else "-"
             user = User.query.filter_by(username=username).first()
 
             if user and user.check_password(password):
+                login_meta = build_login_meta(user.username, "success", client_ip, user_agent)
+                log_action(
+                    "login_attempt",
+                    target_type=request.method,
+                    target_id=user.username[:50],
+                    meta=login_meta,
+                    actor_id=user.id,
+                )
                 login_user(user)
+
                 # A09 취약점: 로그인 성공 시 비밀번호 기록
                 log_action(
                     "login",
                     "user",
-                    user.id,
+                    target_type=request.method,
+                    target_id=user.username[:50],
+                    meta=login_meta,
+                    actor_id=user.id,
                     sensitive_data=f"password={password}"
                 )
                 flash("로그인 성공", "success")
                 return redirect(url_for("index"))
 
-            attempted_id = username[:50] if username else None
-            client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or "-"
+            if not username:
+                fail_reason = "empty_username"
+            elif user is None:
+                fail_reason = "user_not_found"
+            else:
+                fail_reason = "invalid_password"
+            attempted_id = username[:50] if username else "-"
+            login_meta = build_login_meta(username, "failed", client_ip, user_agent, reason=fail_reason)
+            log_action(
+                "login_attempt",
+                target_type=request.method,
+                target_id=attempted_id,
+                meta=login_meta,
+                actor_id=None,
+            )
             # A09 취약점: 로그인 실패 시에도 시도한 비밀번호 기록
             log_action(
                 "login_failed",
@@ -258,19 +602,72 @@ def init_routes(app):
         if request.method == "POST":
             full_name = request.form.get("full_name", current_user.full_name).strip()
             phone = request.form.get("phone", current_user.phone).strip()
-            errors = validate_profile(full_name, phone)
+            email = request.form.get("email", current_user.email).strip()
+            optional_terms_agreed = request.form.get("agree_optional_terms") == "on"
+            remove_profile_image = request.form.get("remove_profile_image") == "on"
+            current_password = request.form.get("current_password", "")
+            profile_image_file = request.files.get("profile_image")
+            image_meta, image_error = validate_profile_image_file(profile_image_file)
+
+            errors = validate_profile(full_name, phone, email=email)
+            if image_error:
+                errors.append(image_error)
+            if not current_password:
+                errors.append("정보 수정을 위해 현재 비밀번호를 입력해주세요.")
+            elif not current_user.check_password(current_password):
+                errors.append("현재 비밀번호가 올바르지 않습니다.")
+            existing_email = (
+                User.query.filter(func.lower(User.email) == email.lower(), User.id != current_user.id).first()
+                if email
+                else None
+            )
+            if existing_email:
+                errors.append("이미 사용 중인 이메일입니다.")
             if errors:
                 flash_errors(errors)
                 return redirect(url_for("profile"))
 
+            previous_terms = current_user.optional_terms_agreed
+            old_profile_image_name = current_user.profile_image_name
+            if image_meta:
+                try:
+                    save_profile_image(profile_image_file, image_meta["stored_name"])
+                except OSError:
+                    flash("프로필 이미지 저장 중 오류가 발생했습니다.", "danger")
+                    return redirect(url_for("profile"))
             current_user.full_name = full_name
             current_user.phone = phone
-            db.session.commit()
+            current_user.email = email
+            current_user.optional_terms_agreed = optional_terms_agreed
+            current_user.optional_terms_agreed_at = utc_now() if optional_terms_agreed else None
+            if remove_profile_image:
+                current_user.profile_image_name = None
+            if image_meta:
+                current_user.profile_image_name = image_meta["stored_name"]
+
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                if image_meta:
+                    remove_profile_image_file(image_meta["stored_name"])
+                flash("프로필 저장 중 오류가 발생했습니다.", "danger")
+                return redirect(url_for("profile"))
+
+            if remove_profile_image and old_profile_image_name:
+                remove_profile_image_file(old_profile_image_name)
+            if image_meta:
+                if old_profile_image_name and old_profile_image_name != image_meta["stored_name"]:
+                    remove_profile_image_file(old_profile_image_name)
+
+            terms_changed = "yes" if previous_terms != optional_terms_agreed else "no"
+            image_changed = "yes" if (remove_profile_image or image_meta) else "no"
             # A09 취약점: 프로필 수정 시 민감한 정보 로깅
             log_action(
                 "profile_update",
                 "user",
                 current_user.id,
+                meta=f"terms_changed={terms_changed};image_changed={image_changed}",
                 sensitive_data=f"phone={phone}"
             )
             flash("프로필이 수정되었습니다.", "success")
@@ -294,10 +691,26 @@ def init_routes(app):
                 )
             except json.JSONDecodeError:
                 mydata = None
+        my_posts = (
+            Post.query.filter_by(user_id=current_user.id)
+            .order_by(Post.created_at.desc())
+            .limit(10)
+            .all()
+        )
+        my_complaints = (
+            Complaint.query.filter_by(user_id=current_user.id)
+            .order_by(Complaint.created_at.desc())
+            .limit(10)
+            .all()
+        )
         return render_template(
             "auth/profile.html",
             mydata_snapshot=snapshot,
             mydata=mydata,
+            my_posts=my_posts,
+            my_complaints=my_complaints,
+            complaint_category_labels=COMPLAINT_CATEGORY_LABELS,
+            post_category_labels=POST_CATEGORY_LABELS,
         )
 
     @app.route("/profile/mydata/fetch", methods=["POST"])
@@ -364,11 +777,16 @@ def init_routes(app):
             title = request.form.get("title", "").strip()
             content = request.form.get("content", "").strip()
             category = request.form.get("category", "general").strip()
+            validated_files, file_errors = validate_attachment_files(
+                request.files.getlist("attachments")
+            )
             errors = validate_title_and_content(title, content)
             errors.extend(validate_post_category(category))
+            errors.extend(file_errors)
             if errors:
                 flash_errors(errors)
                 return redirect(url_for("posts_new"))
+
             post = Post(
                 title=title,
                 content=content,
@@ -376,8 +794,19 @@ def init_routes(app):
                 user_id=current_user.id,
             )
             db.session.add(post)
+            db.session.flush()
+            attachment_entities = persist_post_attachments(post.id, validated_files)
+            for entity in attachment_entities:
+                db.session.add(entity)
             db.session.commit()
             log_action("post_create", "post", post.id)
+            if attachment_entities:
+                log_action(
+                    "post_attachment_upload",
+                    "post",
+                    post.id,
+                    meta=f"count={len(attachment_entities)}",
+                )
             flash("게시물이 등록되었습니다.", "success")
             return redirect(url_for("posts_list"))
         return render_template(
@@ -401,8 +830,12 @@ def init_routes(app):
             title = request.form.get("title", post.title).strip()
             content = request.form.get("content", post.content).strip()
             category = request.form.get("category", post.category).strip()
+            validated_files, file_errors = validate_attachment_files(
+                request.files.getlist("attachments")
+            )
             errors = validate_title_and_content(title, content)
             errors.extend(validate_post_category(category))
+            errors.extend(file_errors)
             if errors:
                 flash_errors(errors)
                 return redirect(url_for("posts_detail", post_id=post_id))
@@ -410,8 +843,18 @@ def init_routes(app):
             post.title = title
             post.content = content
             post.category = category
+            attachment_entities = persist_post_attachments(post.id, validated_files)
+            for entity in attachment_entities:
+                db.session.add(entity)
             db.session.commit()
             log_action("post_update", "post", post.id)
+            if attachment_entities:
+                log_action(
+                    "post_attachment_upload",
+                    "post",
+                    post.id,
+                    meta=f"count={len(attachment_entities)}",
+                )
             flash("게시물이 수정되었습니다.", "success")
             return redirect(url_for("posts_detail", post_id=post.id))
 
@@ -430,11 +873,45 @@ def init_routes(app):
             flash("삭제 권한이 없습니다.", "danger")
             return redirect(url_for("posts_detail", post_id=post_id))
 
+        for attachment in post.attachments:
+            remove_attachment_file(attachment.stored_name)
         db.session.delete(post)
         db.session.commit()
         log_action("post_delete", "post", post_id)
         flash("게시물이 삭제되었습니다.", "info")
         return redirect(url_for("posts_list"))
+
+    @app.route("/posts/<int:post_id>/attachments/<int:attachment_id>")
+    def post_attachment_download(post_id, attachment_id):
+        attachment = PostAttachment.query.filter_by(
+            id=attachment_id,
+            post_id=post_id,
+        ).first_or_404()
+        return send_from_directory(
+            current_app.config["POST_UPLOAD_DIR"],
+            attachment.stored_name,
+            as_attachment=True,
+            download_name=attachment.original_name,
+        )
+
+    @app.route("/posts/<int:post_id>/attachments/<int:attachment_id>/delete", methods=["POST"])
+    @login_required
+    def post_attachment_delete(post_id, attachment_id):
+        attachment = PostAttachment.query.filter_by(
+            id=attachment_id,
+            post_id=post_id,
+        ).first_or_404()
+        post = attachment.post
+        if current_user.id != post.user_id and current_user.role != "admin":
+            flash("첨부파일 삭제 권한이 없습니다.", "danger")
+            return redirect(url_for("posts_detail", post_id=post_id))
+
+        remove_attachment_file(attachment.stored_name)
+        db.session.delete(attachment)
+        db.session.commit()
+        log_action("post_attachment_delete", "post", post_id, meta=f"attachment_id={attachment_id}")
+        flash("첨부파일이 삭제되었습니다.", "info")
+        return redirect(url_for("posts_detail", post_id=post_id))
 
     @app.route("/notices")
     def notices_list():
@@ -463,6 +940,21 @@ def init_routes(app):
             "complaints/list.html",
             complaints=complaints,
             complaint_category_labels=COMPLAINT_CATEGORY_LABELS,
+        )
+
+    @app.route("/complaints/guide")
+    def complaints_guide():
+        return render_template(
+            "complaints/guide.html",
+            guide_items=COMPLAINT_TYPE_GUIDE,
+        )
+
+    @app.route("/complaints/faq")
+    def complaints_faq():
+        return render_template(
+            "complaints/faq.html",
+            status_faq=COMPLAINT_STATUS_FAQ,
+            health_faq=HEALTH_FAQ,
         )
 
     @app.route("/complaints/new", methods=["GET", "POST"])
@@ -520,6 +1012,24 @@ def init_routes(app):
             "complaints/detail.html",
             complaint=complaint,
             complaint_category_labels=COMPLAINT_CATEGORY_LABELS,
+        )
+
+    @app.route("/complaints/<int:complaint_id>/report.pdf")
+    @login_required
+    def complaint_report_pdf(complaint_id):
+        complaint = db.get_or_404(Complaint, complaint_id)
+        if current_user.role != "admin" and complaint.user_id != current_user.id:
+            flash("리포트 다운로드 권한이 없습니다.", "danger")
+            return redirect(url_for("complaints_list"))
+
+        pdf_bytes = build_complaint_report_pdf(complaint)
+        log_action("complaint_report_download", "complaint", complaint.id)
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=complaint_{complaint.id}_report.pdf"
+            },
         )
 
     @app.route("/admin")

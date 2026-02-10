@@ -25,10 +25,16 @@ def ensure_default_admin():
             email="admin@example.com",
             full_name="System Admin",
             phone="010-0000-0000",
+            required_terms_agreed=True,
+            required_terms_agreed_at=utc_now(),
             role="admin",
         )
         admin.set_password("admin1234")
         db.session.add(admin)
+        db.session.commit()
+    elif not admin.required_terms_agreed:
+        admin.required_terms_agreed = True
+        admin.required_terms_agreed_at = admin.required_terms_agreed_at or utc_now()
         db.session.commit()
     return admin
 
@@ -41,10 +47,16 @@ def ensure_user(username, email, full_name, phone, password):
             email=email,
             full_name=full_name,
             phone=phone,
+            required_terms_agreed=True,
+            required_terms_agreed_at=utc_now(),
             role="user",
         )
         user.set_password(password)
         db.session.add(user)
+        db.session.commit()
+    elif not user.required_terms_agreed:
+        user.required_terms_agreed = True
+        user.required_terms_agreed_at = user.required_terms_agreed_at or utc_now()
         db.session.commit()
     return user
 
@@ -52,17 +64,38 @@ def ensure_user(username, email, full_name, phone, password):
 def ensure_schema_upgrades():
     inspector = inspect(db.engine)
     tables = set(inspector.get_table_names())
-    if "post" not in tables:
-        return
-
-    post_columns = {col["name"] for col in inspector.get_columns("post")}
-    if "category" not in post_columns:
-        db.session.execute(
-            text(
-                "ALTER TABLE post ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'general'"
+    if "post" in tables:
+        post_columns = {col["name"] for col in inspector.get_columns("post")}
+        if "category" not in post_columns:
+            db.session.execute(
+                text(
+                    "ALTER TABLE post ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'general'"
+                )
             )
-        )
-        db.session.commit()
+            db.session.commit()
+
+    if "user" in tables:
+        user_columns = {col["name"] for col in inspector.get_columns("user")}
+        alter_statements = []
+        if "profile_image_name" not in user_columns:
+            alter_statements.append("ALTER TABLE user ADD COLUMN profile_image_name VARCHAR(255) NULL")
+        if "required_terms_agreed" not in user_columns:
+            alter_statements.append(
+                "ALTER TABLE user ADD COLUMN required_terms_agreed BOOLEAN NOT NULL DEFAULT 0"
+            )
+        if "required_terms_agreed_at" not in user_columns:
+            alter_statements.append("ALTER TABLE user ADD COLUMN required_terms_agreed_at DATETIME NULL")
+        if "optional_terms_agreed" not in user_columns:
+            alter_statements.append(
+                "ALTER TABLE user ADD COLUMN optional_terms_agreed BOOLEAN NOT NULL DEFAULT 0"
+            )
+        if "optional_terms_agreed_at" not in user_columns:
+            alter_statements.append("ALTER TABLE user ADD COLUMN optional_terms_agreed_at DATETIME NULL")
+
+        for statement in alter_statements:
+            db.session.execute(text(statement))
+        if alter_statements:
+            db.session.commit()
 
 
 @app.cli.command("seed-demo")

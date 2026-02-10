@@ -30,6 +30,18 @@
 | updated_at | DATETIME | NULL | 수정 시각 |
 | user_id | INT | FK -> user.id, NOT NULL | 작성자 |
 
+## 1.2-1 post_attachment
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | INT | PK, AUTO_INCREMENT | 첨부파일 ID |
+| post_id | INT | FK -> post.id, NOT NULL | 게시물 ID |
+| original_name | VARCHAR(255) | NOT NULL | 원본 파일명 |
+| stored_name | VARCHAR(255) | UNIQUE, NOT NULL | 저장 파일명 |
+| mime_type | VARCHAR(120) | NULL | MIME 타입 |
+| file_size | INT | NOT NULL, default `0` | 파일 크기(Byte) |
+| created_at | DATETIME | NOT NULL | 업로드 시각 |
+
 ## 1.3 notice
 
 | 컬럼 | 타입 | 제약 | 설명 |
@@ -83,6 +95,7 @@
 ## 2. 권장 인덱스
 
 - `post(user_id, created_at)`
+- `post_attachment(post_id, created_at)`
 - `notice(is_published, created_at)`
 - `complaint(user_id, status, created_at)`
 - `audit_log(actor_id, created_at)`
@@ -112,6 +125,7 @@ flask --app manage.py seed-demo
 ```sql
 SELECT COUNT(*) AS users FROM user;
 SELECT COUNT(*) AS posts FROM post;
+SELECT COUNT(*) AS post_attachments FROM post_attachment;
 SELECT COUNT(*) AS notices FROM notice;
 SELECT COUNT(*) AS complaints FROM complaint;
 SELECT COUNT(*) AS logs FROM audit_log;

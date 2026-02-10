@@ -15,7 +15,7 @@
 | FR-001 | 회원가입 | P0 | `/register` | `was/app/routes.py`, `was/app/templates/auth/register.html` | TC-AUTH-01 | 중복/누락 검증 포함 성공 |
 | FR-002 | 로그인/로그아웃 | P0 | `/login`, `/logout` | `was/app/routes.py`, `was/app/templates/auth/login.html` | TC-AUTH-02,03,04 | 세션 생성/삭제 정상 |
 | FR-003 | 마이페이지/의료 마이데이터 | P0 | `/profile`, `/profile/mydata/fetch` | `was/app/routes.py`, `was/app/mydata_mock.py`, `was/app/templates/auth/profile.html` | TC-PROF-01,02 | 프로필 수정 + 동의 기반 마이데이터 조회 |
-| FR-004 | 게시물 생성/조회(분류 포함) | P0 | `/posts`, `/posts/new`, `/posts/{id}` | `was/app/routes.py`, `was/app/templates/posts/*`, `was/app/models.py` | TC-POST-01,04,06 | 목록/상세에 즉시 반영, 분류 저장 |
+| FR-004 | 게시물 생성/조회(분류/첨부 포함) | P0 | `/posts`, `/posts/new`, `/posts/{id}` | `was/app/routes.py`, `was/app/templates/posts/*`, `was/app/models.py` | TC-POST-01,04,06,07 | 목록/상세에 즉시 반영, 분류/첨부 저장 |
 | FR-005 | 게시물 수정/삭제 권한 | P0 | `/posts/{id}`, `/posts/{id}/delete` | `was/app/routes.py` | TC-POST-02,03,05 | 작성자/관리자만 허용 |
 | FR-006 | 공지 사용자 조회 | P0 | `/notices`, `/notices/{id}` | `was/app/routes.py`, `was/app/templates/notices/*` | TC-NOTI-01,03 | 비공개 공지 차단 |
 | FR-007 | 공지 관리자 관리 | P0 | `/admin/notices`, `/admin/notices/{id}/publish` | `was/app/routes.py`, `was/app/templates/admin/notices.html` | TC-NOTI-02,04 | 등록/공개전환 정상 |
@@ -29,6 +29,8 @@
 | FR-015 | 관리자 검색/필터/페이지네이션 | P1 | `/admin/users`, `/admin/posts`, `/admin/notices`, `/admin/complaints` | `was/app/routes.py`, `was/app/templates/admin/*` | TC-ADMIN-05,06,07 | 검색조건 반영 및 페이지 이동 가능 |
 | FR-016 | OWASP Top 10:2025 시나리오 페이지 | P1 | `/security/scenarios`, `/security/scenarios/{id}` | `was/app/routes.py`, `was/app/security_catalog.py`, `was/app/templates/security/*` | TC-SEC-01,02 | A01:2025~A10:2025 시나리오 열람 및 권한 통제 |
 | FR-017 | 공공 의료 정보 포털 페이지 | P1 | `/health-info`, `/health-centers`, `/health-programs/{id}` | `was/app/routes.py`, `was/app/health_content.py`, `was/app/templates/health/*` | TC-HEALTH-01,02 | 정보/지원사업/센터 페이지 노출 |
+| FR-018 | 공공의료 안내 고도화(가이드/캘린더/절차) | P1 | `/complaints/guide`, `/complaints/faq`, `/health-calendar`, `/support-programs`, `/records/procedure` | `was/app/routes.py`, `was/app/health_content.py`, `was/app/templates/complaints/*`, `was/app/templates/health/*` | TC-HEALTH-03, TC-COMP-04 | 민원 유형/SLA/일정/지원/개인정보 절차 안내 노출 |
+| FR-019 | 민원 결과 PDF 리포트 다운로드 | P1 | `/complaints/{id}/report.pdf` | `was/app/routes.py`, `was/app/templates/complaints/detail.html`, `was/requirements.txt` | TC-COMP-05 | 본인/관리자 PDF 다운로드 가능 |
 | NFR-001 | 3티어 구조 | P0 | web-was-db 분리 | `docker-compose.yml`, `web/nginx.conf` | TC-OPS-01 | 계층 분리 기동 |
 | NFR-002 | 데이터 영속성 | P1 | MariaDB volume | `docker-compose.yml` | TC-OPS-02 | 컨테이너 재기동 후 데이터 유지 |
 | NFR-003 | 기본 운영 문서 | P0 | 실행/테스트/완성계획 | `README.md`, `docs/*` | TC-DOC-01 | 신규 인원이 문서만으로 실행 가능 |

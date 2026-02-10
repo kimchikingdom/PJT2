@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}의무기록/개인정보 절차{% endblock %}
+
+{% block content %}
+<div class="card">
+  <p class="eyebrow">Records & Privacy</p>
+  <h2>의무기록/개인정보 열람·정정 요청 절차</h2>
+  <p class="small">민원 접수 전에 아래 절차와 제출 서류를 확인하세요.</p>
+  <div class="grid grid-2">
+    {% for item in procedures %}
+    <section class="card" style="background: var(--surface-soft); box-shadow: none; margin-bottom: 0;">
+      <p class="eyebrow">STEP {{ item.step }}</p>
+      <h3>{{ item.title }}</h3>
+      <p class="small">{{ item.detail }}</p>
+    </section>
+    {% endfor %}
+  </div>
+  <div class="inline-actions" style="margin-top: 12px;">
+    <a class="btn" href="{{ url_for('complaints_new') if current_user.is_authenticated else url_for('login') }}">관련 민원 접수</a>
+    <a class="btn btn-subtle" href="{{ url_for('complaints_faq') }}">민원 처리 단계 FAQ</a>
+  </div>
+</div>
+{% endblock %}

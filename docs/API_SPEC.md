@@ -110,7 +110,7 @@
 ### `POST /posts/new`
 - 권한: Authenticated
 - 목적: 글 작성
-- 요청 필드: `title`, `content`, `category`
+- 요청 필드: `title`, `content`, `category`, `attachments[]`(선택)
 - 성공: `302 /posts`, flash `success`
 - 실패: `302 /posts/new`, flash `danger`
 - DB 영향: `post` 생성, `audit_log` 기록
@@ -124,10 +124,22 @@
 ### `POST /posts/{post_id}`
 - 권한: 작성자 또는 관리자
 - 목적: 게시물 수정
-- 요청 필드: `title`, `content`, `category`
+- 요청 필드: `title`, `content`, `category`, `attachments[]`(선택, 추가 업로드)
 - 성공: `302 /posts/{post_id}`, flash `success`
 - 실패: `302`, flash `danger`
 - DB 영향: `post` 갱신, `audit_log` 기록
+
+### `GET /posts/{post_id}/attachments/{attachment_id}`
+- 권한: Public
+- 목적: 게시물 첨부파일 다운로드
+- 성공: `200` 파일 응답
+- 실패: `404`
+
+### `POST /posts/{post_id}/attachments/{attachment_id}/delete`
+- 권한: 작성자 또는 관리자
+- 목적: 게시물 첨부파일 삭제
+- 성공: `302 /posts/{post_id}`, flash `info`
+- 실패: `302`, flash `danger`
 
 ### `POST /posts/{post_id}/delete`
 - 권한: 작성자 또는 관리자
@@ -151,6 +163,16 @@
 - 실패: `302 /notices` 또는 `404`
 
 ## 4.4 민원
+
+### `GET /complaints/guide`
+- 권한: Public
+- 목적: 민원 유형 가이드 및 SLA(처리기한) 안내
+- 성공: `200`, `complaints/guide.html`
+
+### `GET /complaints/faq`
+- 권한: Public
+- 목적: 민원 처리 단계/자주 묻는 질문 안내
+- 성공: `200`, `complaints/faq.html`
 
 ### `GET /complaints`
 - 권한: Authenticated
@@ -184,6 +206,13 @@
 - 성공: `302 /complaints/{complaint_id}`, flash `success`
 - 실패: `302`, flash `danger`
 - DB 영향: `complaint.status`, `assigned_admin_id` 갱신, `audit_log` 기록
+
+### `GET /complaints/{complaint_id}/report.pdf`
+- 권한: 본인 또는 관리자
+- 목적: 민원 결과 리포트 PDF 다운로드
+- 성공: `200`, `application/pdf`
+- 실패: `302 /complaints` 또는 `404`
+- DB 영향: `audit_log` 기록(`complaint_report_download`)
 
 ## 4.5 관리자
 
@@ -232,6 +261,21 @@
 - 권한: Public
 - 목적: 지역 공공의료 연계센터 조회
 - 성공: `200`, `health/centers.html`
+
+### `GET /health-calendar`
+- 권한: Public
+- 목적: 예방접종/검진 일정 캘린더 조회
+- 성공: `200`, `health/calendar.html`
+
+### `GET /support-programs`
+- 권한: Public
+- 목적: 의료비 지원사업 안내 조회
+- 성공: `200`, `health/support_programs.html`
+
+### `GET /records/procedure`
+- 권한: Public
+- 목적: 의무기록/개인정보 열람·정정 절차 안내
+- 성공: `200`, `health/records_procedure.html`
 
 ### `GET /health-programs/{program_id}`
 - 권한: Public

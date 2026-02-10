@@ -1,35 +1,208 @@
 {% extends 'base.html' %}
-{% block title %}게시물 상세{% endblock %}
+{% block title %}{{ post.title }} | 게시판{% endblock %}
 {% block content %}
+
+<!-- 게시물 본문 카드 -->
 <div class="card">
-  <p class="eyebrow">Post #{{ post.id }}</p>
-  <h2>{{ post.title }}</h2>
-  <p><span class="badge badge-open">{{ post_category_labels.get(post.category, post.category) }}</span></p>
-  <p class="small">작성자 {{ post.author.username }} · {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-  <div class="card" style="margin-top: 12px; background: var(--surface-soft); box-shadow: none;">
-    <p style="white-space: pre-wrap; margin: 0;">{{ post.content }}</p>
+  <div class="split" style="margin-bottom: 12px;">
+    <p class="eyebrow" style="margin: 0;">Post #{{ post.id }}</p>
+    <a class="btn btn-subtle" href="{{ url_for('posts_list') }}" style="font-size: 0.85rem; padding: 7px 12px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+      </svg>
+      목록으로
+    </a>
+  </div>
+
+  <h2 style="margin: 0 0 10px; line-height: 1.4;">{{ post.title }}</h2>
+
+  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+    <span class="badge badge-open">{{ post_category_labels.get(post.category, post.category) }}</span>
+    <span class="small">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true" style="vertical-align: middle; margin-right: 3px;">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      {{ post.author.username }}
+    </span>
+    <span class="small">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true" style="vertical-align: middle; margin-right: 3px;">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
+    </span>
+  </div>
+
+  <!-- 본문 영역 -->
+  <div style="
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    line-height: 1.8;
+    word-break: keep-all;
+    min-height: 120px;
+  ">
+    <p style="white-space: pre-wrap; margin: 0; color: var(--text);">{{ post.content }}</p>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <h3 style="margin: 0 0 8px;">첨부파일</h3>
+    {% if post.attachments %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>파일명</th>
+            <th>크기</th>
+            <th>다운로드</th>
+            {% if current_user.is_authenticated and (current_user.id == post.user_id or current_user.role == 'admin') %}
+            <th>삭제</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for attachment in post.attachments %}
+          <tr>
+            <td class="text-wrap">{{ attachment.original_name }}</td>
+            <td>{{ "{:,}".format(attachment.file_size or 0) }} B</td>
+            <td>
+              <a class="btn btn-subtle" href="{{ url_for('post_attachment_download', post_id=post.id, attachment_id=attachment.id) }}">다운로드</a>
+            </td>
+            {% if current_user.is_authenticated and (current_user.id == post.user_id or current_user.role == 'admin') %}
+            <td>
+              <form method="post" action="{{ url_for('post_attachment_delete', post_id=post.id, attachment_id=attachment.id) }}">
+                <button class="btn btn-danger" type="submit">삭제</button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="small">등록된 첨부파일이 없습니다.</p>
+    {% endif %}
   </div>
 </div>
 
+<!-- 수정/삭제 카드 (권한 있을 때만) -->
 {% if current_user.is_authenticated and (current_user.id == post.user_id or current_user.role == 'admin') %}
 <div class="card">
-  <p class="eyebrow">Edit</p>
-  <h3>게시물 수정</h3>
-  <form class="form" method="post">
-    <label>분류
-      <select name="category" required>
-        {% for item in category_options %}
-        <option value="{{ item }}" {% if post.category == item %}selected{% endif %}>{{ post_category_labels.get(item, item) }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>제목<input name="title" value="{{ post.title }}" required></label>
-    <label>내용<textarea name="content" rows="10" required>{{ post.content }}</textarea></label>
-    <button type="submit">수정 저장</button>
+  <p class="eyebrow">Edit Post</p>
+  <h3 style="margin: 4px 0 18px;">게시물 수정</h3>
+
+  <form class="form" method="post" enctype="multipart/form-data" novalidate id="post-edit-form">
+    <!-- 분류 -->
+    <div class="form-group">
+      <label for="edit-category">분류</label>
+      <div class="input-icon-wrap">
+        <span class="field-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+            <line x1="7" y1="7" x2="7.01" y2="7"/>
+          </svg>
+        </span>
+        <select id="edit-category" name="category" required>
+          {% for item in category_options %}
+          <option value="{{ item }}" {% if post.category == item %}selected{% endif %}>{{ post_category_labels.get(item, item) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- 제목 -->
+    <div class="form-group">
+      <label for="edit-title">제목</label>
+      <input
+        id="edit-title"
+        name="title"
+        type="text"
+        value="{{ post.title }}"
+        required
+        maxlength="100"
+        oninput="updateCounter('edit-title', 'counter-edit-title', 100)"
+      >
+      <div class="field-hint">
+        <span></span>
+        <span class="char-counter" id="counter-edit-title">{{ post.title | length }} / 100</span>
+      </div>
+    </div>
+
+    <!-- 내용 -->
+    <div class="form-group">
+      <label for="edit-content">내용</label>
+      <textarea
+        id="edit-content"
+        name="content"
+        rows="12"
+        required
+        maxlength="3000"
+        oninput="updateCounter('edit-content', 'counter-edit-content', 3000)"
+      >{{ post.content }}</textarea>
+      <div class="field-hint">
+        <span></span>
+        <span class="char-counter" id="counter-edit-content">{{ post.content | length }} / 3,000</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="edit-attachments">첨부파일 추가</label>
+      <input
+        id="edit-attachments"
+        name="attachments"
+        type="file"
+        multiple
+        accept=".jpg,.jpeg,.png,.gif,.pdf,.txt,.doc,.docx,.xls,.xlsx,.hwp,.hwpx"
+      >
+      <div class="field-hint">
+        <span>새 파일을 추가 업로드할 수 있습니다.</span>
+      </div>
+    </div>
+
+    <div class="inline-actions" style="margin-top: 4px;">
+      <button type="submit">수정 저장</button>
+    </div>
   </form>
-  <form method="post" action="{{ url_for('posts_delete', post_id=post.id) }}">
-    <button class="btn-danger" type="submit">삭제</button>
-  </form>
+
+  <!-- 삭제 구분선 -->
+  <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+    <p class="small" style="margin-bottom: 10px; color: var(--danger);">
+      게시물을 삭제하면 복구할 수 없습니다.
+    </p>
+    <form method="post" action="{{ url_for('posts_delete', post_id=post.id) }}"
+          onsubmit="return confirm('게시물을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')">
+      <button class="btn btn-danger" type="submit">게시물 삭제</button>
+    </form>
+  </div>
 </div>
 {% endif %}
+
+<script>
+  function updateCounter(inputId, counterId, maxLen) {
+    var input = document.getElementById(inputId);
+    var counter = document.getElementById(counterId);
+    if (!input || !counter) return;
+
+    var len = input.value.length;
+    var maxFormatted = maxLen >= 1000 ? maxLen.toLocaleString('ko-KR') : maxLen;
+    counter.textContent = len.toLocaleString('ko-KR') + ' / ' + maxFormatted;
+
+    counter.classList.remove('near-limit', 'at-limit');
+    if (len >= maxLen) {
+      counter.classList.add('at-limit');
+    } else if (len >= maxLen * 0.8) {
+      counter.classList.add('near-limit');
+    }
+  }
+</script>
 {% endblock %}

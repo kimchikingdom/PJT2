@@ -1,23 +1,105 @@
 {% extends 'base.html' %}
-{% block title %}글 작성{% endblock %}
+{% block title %}글 작성 | 공공 의료 민원 포털{% endblock %}
 {% block content %}
 <div class="card" style="max-width: 820px;">
-  <p class="eyebrow">Write Complaint Post</p>
+  <p class="eyebrow">Write Post</p>
   <h2>민원 커뮤니티 글 작성</h2>
-  <form class="form" method="post">
-    <label>분류
-      <select name="category" required>
-        {% for item in category_options %}
-        <option value="{{ item }}">{{ post_category_labels.get(item, item) }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>제목<input name="title" required></label>
-    <label>내용<textarea name="content" rows="10" required></textarea></label>
-    <div class="inline-actions">
-      <button type="submit">등록</button>
+  <p class="small" style="margin-bottom: 20px;">의견, 민원, 정보 공유 등 다양한 주제를 자유롭게 작성하세요.</p>
+
+  <form class="form" method="post" enctype="multipart/form-data" novalidate id="post-new-form">
+    <!-- 분류 -->
+    <div class="form-group">
+      <label for="new-category">분류</label>
+      <div class="input-icon-wrap">
+        <span class="field-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+            <line x1="7" y1="7" x2="7.01" y2="7"/>
+          </svg>
+        </span>
+        <select id="new-category" name="category" required>
+          {% for item in category_options %}
+          <option value="{{ item }}">{{ post_category_labels.get(item, item) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- 제목 -->
+    <div class="form-group">
+      <label for="new-title">제목</label>
+      <input
+        id="new-title"
+        name="title"
+        type="text"
+        required
+        maxlength="100"
+        placeholder="제목을 입력하세요 (최대 100자)"
+        oninput="updateCounter('new-title', 'counter-title', 100)"
+      >
+      <div class="field-hint">
+        <span>명확하고 구체적인 제목을 작성하면 더 많은 관심을 받을 수 있습니다.</span>
+        <span class="char-counter" id="counter-title">0 / 100</span>
+      </div>
+    </div>
+
+    <!-- 내용 -->
+    <div class="form-group">
+      <label for="new-content">내용</label>
+      <textarea
+        id="new-content"
+        name="content"
+        rows="12"
+        required
+        maxlength="3000"
+        placeholder="내용을 자세히 작성해 주세요. 관련 날짜, 장소, 담당자 정보 등을 포함하면 처리에 도움이 됩니다."
+        oninput="updateCounter('new-content', 'counter-content', 3000)"
+      ></textarea>
+      <div class="field-hint">
+        <span>구체적인 내용일수록 빠른 처리가 가능합니다.</span>
+        <span class="char-counter" id="counter-content">0 / 3,000</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="new-attachments">첨부파일</label>
+      <input
+        id="new-attachments"
+        name="attachments"
+        type="file"
+        multiple
+        accept=".jpg,.jpeg,.png,.gif,.pdf,.txt,.doc,.docx,.xls,.xlsx,.hwp,.hwpx"
+      >
+      <div class="field-hint">
+        <span>지원 형식: jpg, png, pdf, doc/docx, xls/xlsx, hwp/hwpx, txt</span>
+      </div>
+    </div>
+
+    <div class="inline-actions" style="margin-top: 4px;">
+      <button type="submit">등록하기</button>
       <a class="btn btn-subtle" href="{{ url_for('posts_list') }}">취소</a>
     </div>
   </form>
 </div>
+
+<script>
+  function updateCounter(inputId, counterId, maxLen) {
+    var input = document.getElementById(inputId);
+    var counter = document.getElementById(counterId);
+    if (!input || !counter) return;
+
+    var len = input.value.length;
+    /* 천 단위 쉼표 포맷 */
+    var maxFormatted = maxLen >= 1000 ? maxLen.toLocaleString('ko-KR') : maxLen;
+    counter.textContent = len.toLocaleString('ko-KR') + ' / ' + maxFormatted;
+
+    counter.classList.remove('near-limit', 'at-limit');
+    if (len >= maxLen) {
+      counter.classList.add('at-limit');
+    } else if (len >= maxLen * 0.8) {
+      counter.classList.add('near-limit');
+    }
+  }
+</script>
 {% endblock %}

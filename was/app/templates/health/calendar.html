@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}예방접종/검진 일정{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <p class="eyebrow">Health Calendar</p>
+      <h2>예방접종/검진 일정 캘린더</h2>
+    </div>
+    <a class="btn btn-subtle" href="{{ url_for('complaints_new') if current_user.is_authenticated else url_for('login') }}">민원 접수</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>월</th><th>일정</th><th>대상자</th><th>지원 기준</th><th>안내 채널</th></tr></thead>
+      <tbody>
+        {% for item in schedules %}
+        <tr>
+          <td>{{ item.month }}</td>
+          <td class="text-wrap">{{ item.title }}</td>
+          <td>{{ item.target }}</td>
+          <td class="text-wrap">{{ item.support }}</td>
+          <td>{{ item.channel }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
