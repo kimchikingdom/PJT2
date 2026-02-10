@@ -537,6 +537,47 @@ def test_profile_mydata_fetch_and_render(tmp_path):
     assert "의료 마이데이터".encode() in profile_page.data
 
 
+def test_profile_mydata_report_pdf_download(tmp_path):
+    db_path = tmp_path / "mydata_report.db"
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{db_path}",
+            "SECRET_KEY": "test-secret",
+        }
+    )
+
+    with app.app_context():
+        db.create_all()
+        _create_user("myreportuser", role="user")
+
+    client = app.test_client()
+    _login(client, "myreportuser")
+
+    no_data = client.get("/profile/mydata/report.pdf", follow_redirects=False)
+    assert no_data.status_code == 302
+
+    fetched = client.post(
+        "/profile/mydata/fetch",
+        data={"consent_mydata": "on"},
+        follow_redirects=False,
+    )
+    assert fetched.status_code == 302
+
+    report = client.get("/profile/mydata/report.pdf", follow_redirects=False)
+    assert report.status_code == 200
+    assert report.mimetype == "application/pdf"
+    assert report.data.startswith(b"%PDF")
+
+    with app.app_context():
+        event = (
+            AuditLog.query.filter_by(action="mydata_report_download")
+            .order_by(AuditLog.id.desc())
+            .first()
+        )
+        assert event is not None
+
+
 def test_post_attachment_upload_download_delete(tmp_path):
     db_path = tmp_path / "post_attachment.db"
     upload_dir = tmp_path / "uploads"

@@ -14,19 +14,19 @@
     </div>
   </div>
   <div class="table-wrap">
-    <table class="table">
+    <table class="table table-cardize">
       <thead><tr><th>ID</th><th>제목</th><th>카테고리</th><th>상태</th><th>작성일</th></tr></thead>
       <tbody>
         {% for c in complaints %}
         <tr>
-          <td>{{ c.id }}</td>
-          <td class="text-wrap"><a href="{{ url_for('complaints_detail', complaint_id=c.id) }}">{{ c.title }}</a></td>
-          <td>{{ complaint_category_labels.get(c.category, c.category) }}</td>
-          <td><span class="badge badge-{{ c.status }}">{{ c.status }}</span></td>
-          <td>{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td data-label="ID">{{ c.id }}</td>
+          <td class="text-wrap" data-label="제목"><a href="{{ url_for('complaints_detail', complaint_id=c.id) }}">{{ c.title }}</a></td>
+          <td data-label="카테고리">{{ complaint_category_labels.get(c.category, c.category) }}</td>
+          <td data-label="상태"><span class="badge badge-{{ c.status }}">{{ c.status }}</span></td>
+          <td data-label="작성일">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
         </tr>
         {% else %}
-        <tr>
+        <tr class="table-empty-row">
           <td colspan="5" class="text-wrap">접수된 민원이 없습니다.</td>
         </tr>
         {% endfor %}
