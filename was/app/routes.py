@@ -128,9 +128,9 @@ PROFILE_IMAGE_ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 def admin_required(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role != "admin":
-            flash("관리자만 접근 가능합니다.", "danger")
-            return redirect(url_for("index"))
+        #if not current_user.is_authenticated or current_user.role != "admin":
+        #    flash("관리자만 접근 가능합니다.", "danger")
+        #    return redirect(url_for("index"))
         return func(*args, **kwargs)
 
     return wrapped
