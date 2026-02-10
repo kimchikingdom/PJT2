@@ -4,6 +4,7 @@ import json
 from io import BytesIO
 import os
 import pickle
+import re
 import subprocess
 import time
 import uuid
@@ -1100,11 +1101,30 @@ def init_routes(app):
             title = request.form.get("title", "").strip()
             content = request.form.get("content", "").strip()
             category = request.form.get("category", "general").strip()
+            patient_name = request.form.get("patient_name", "").strip()
+            resident_number = request.form.get("resident_number", "").strip()
+            medical_record = request.form.get("medical_record", "").strip()
             errors = validate_title_and_content(title, content)
             errors.extend(validate_complaint_category(category))
+            if not patient_name:
+                errors.append("이름은 필수 입력값입니다.")
+            if not resident_number:
+                errors.append("주민번호는 필수 입력값입니다.")
+            if resident_number and not re.fullmatch(r"\d{6}-[1-4]\d{6}", resident_number):
+                errors.append("주민번호 형식이 올바르지 않습니다. 예: 900101-1234567")
             if errors:
                 flash_errors(errors)
                 return redirect(url_for("complaints_new"))
+
+            metadata_lines = []
+            if patient_name:
+                metadata_lines.append(f"[민원인] {patient_name}")
+            if resident_number:
+                metadata_lines.append(f"[주민번호] {resident_number}")
+            if medical_record:
+                metadata_lines.append(f"[진료 기록/증상] {medical_record}")
+            if metadata_lines:
+                content = "\n".join(metadata_lines + ["", content])
 
             complaint = Complaint(
                 title=title,
@@ -1735,7 +1755,7 @@ def init_routes(app):
     def vulnlab_a09():
         logs = (
             AuditLog.query.filter_by(actor_id=current_user.id)
-            .order_by(AuditLog.timestamp.desc())
+            .order_by(AuditLog.created_at.desc())
             .limit(20)
             .all()
         )
@@ -1763,7 +1783,7 @@ def init_routes(app):
             }
             logs = (
                 AuditLog.query.filter_by(actor_id=current_user.id)
-                .order_by(AuditLog.timestamp.desc())
+                .order_by(AuditLog.created_at.desc())
                 .limit(20)
                 .all()
             )

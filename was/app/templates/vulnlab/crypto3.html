@@ -2,12 +2,12 @@
 {% block title %}암호화 실패 – 파일 다운로드 IDOR{% endblock %}
 
 {% block hero %}
-<div class="hero" style="background:linear-gradient(135deg,#1e3a5f,#1e40af);color:#fff;padding:1.5rem 2rem;border-radius:8px;margin-bottom:1rem;">
-  <span style="font-size:.8rem;opacity:.7;text-transform:uppercase;letter-spacing:.1em;">Broken Access Control + Cryptographic Failures</span>
+<div class="hero" style="background:linear-gradient(135deg,#1e3a5f,#1e40af);margin-bottom:1rem;">
+  <span class="vuln-eyebrow">Broken Access Control + Cryptographic Failures</span>
   <h1 style="margin:.25rem 0 .5rem;font-size:1.5rem;">암호화 실패 – 파일 다운로드 IDOR</h1>
   <p style="margin:0;opacity:.85;">URL의 파일명만 바꾸면 다른 환자의 진료 기록을 다운로드할 수 있습니다.</p>
 </div>
-<div class="alert alert-warning" role="alert">⚠ 교육 목적으로 의도적으로 구현된 취약점입니다. 모든 개인정보는 가상 데이터입니다.</div>
+<div class="alert alert-danger" role="alert">교육 목적으로 의도적으로 구현된 취약점입니다. 모든 개인정보는 가상 데이터입니다.</div>
 {% endblock %}
 
 {% block content %}
@@ -29,7 +29,7 @@
       </code>
       <div style="margin-top:.75rem;">
         <a href="{{ url_for('vulnlab_crypto3_download', file_name=my_file) }}"
-           class="btn btn-sm" style="background:#3b82f6;color:#fff;border:none;padding:.4rem .9rem;border-radius:4px;text-decoration:none;font-size:.85rem;">
+           class="btn btn-sm" style="background:#3b82f6;color:#fff;text-decoration:none;font-size:.85rem;">
           내 파일 다운로드 (정상)
         </a>
       </div>
@@ -38,14 +38,14 @@
     <!-- IDOR 공격 -->
     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:1rem;">
       <div style="font-size:.85rem;color:#b91c1c;font-weight:600;margin-bottom:.75rem;">
-        ⚠ URL 파일명 변조 → 타인의 의료 기록 탈취 (IDOR 공격)
+        URL 파일명 변조 → 타인의 의료 기록 탈취 (IDOR 공격)
       </div>
       <div style="display:flex;flex-direction:column;gap:.5rem;">
         {% for fname in all_files %}
         <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
           <code style="font-size:.75rem;color:#6b7280;flex:1;min-width:200px;word-break:break-all;">{{ fname }}</code>
           <a href="{{ url_for('vulnlab_crypto3_download', file_name=fname) }}"
-             style="background:#ef4444;color:#fff;padding:.25rem .6rem;border-radius:3px;text-decoration:none;font-size:.78rem;white-space:nowrap;">
+             class="btn btn-sm btn-danger" style="font-size:.78rem;white-space:nowrap;">
             탈취 다운로드
           </a>
         </div>
@@ -71,10 +71,10 @@
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+<div class="code-compare-grid">
   <div class="card" style="border-top:4px solid #ef4444;">
     <div class="card-body" style="padding:1.25rem;">
-      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 설계</h3>
+      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">취약한 설계</h3>
       <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># URL에 개인정보 포함된 파일명
 # /download?file_name=진료기록_홍길동_900101.pdf
 
@@ -82,13 +82,13 @@
 @login_required
 def download():
     name = request.args.get("file_name")
-    # ❌ 소유권 체크 없음!
+    # 소유권 체크 없음!
     return send_file(f"./reports/{name}")</code></pre>
     </div>
   </div>
   <div class="card" style="border-top:4px solid #22c55e;">
     <div class="card-body" style="padding:1.25rem;">
-      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 설계</h3>
+      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">안전한 설계</h3>
       <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># UUID로 파일 식별 (개인정보 제거)
 # /download/a1b2c3d4-...
 
@@ -96,7 +96,7 @@ def download():
 @login_required
 def download(file_id):
     record = FileRecord.query.get_or_404(file_id)
-    # ✅ 소유권 체크
+    # 소유권 체크
     if record.owner_id != current_user.id:
         abort(403)
     return send_file(record.stored_path,
@@ -105,5 +105,5 @@ def download(file_id):
   </div>
 </div>
 
-<a href="{{ url_for('vulnlab_index') }}" style="color:#6b7280;font-size:.85rem;">← 목록으로</a>
+<a href="{{ url_for('vulnlab_index') }}" class="back-link">← 목록으로</a>
 {% endblock %}

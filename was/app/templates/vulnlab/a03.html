@@ -2,12 +2,12 @@
 {% block title %}A03 – Supply Chain Failures{% endblock %}
 
 {% block hero %}
-<div class="hero" style="background:linear-gradient(135deg,#1e3a5f,#1e40af);color:#fff;padding:1.5rem 2rem;border-radius:8px;margin-bottom:1rem;">
-  <span style="font-size:.8rem;opacity:.7;text-transform:uppercase;letter-spacing:.1em;">OWASP Top 10:2025</span>
+<div class="hero" style="background:linear-gradient(135deg,#1e3a5f,#1e40af);margin-bottom:1rem;">
+  <span class="vuln-eyebrow">OWASP Top 10:2025</span>
   <h1 style="margin:.25rem 0 .5rem;font-size:1.5rem;">A03 – Supply Chain Failures</h1>
   <p style="margin:0;opacity:.85;">패키지 버전 고정 현황과 SBOM 부재를 확인합니다.</p>
 </div>
-<div class="alert alert-warning" role="alert">⚠ 교육 목적으로 의도적으로 구현된 취약점입니다.</div>
+<div class="alert alert-danger" role="alert">교육 목적으로 의도적으로 구현된 취약점입니다.</div>
 {% endblock %}
 
 {% block content %}
@@ -17,28 +17,30 @@
     <p style="color:#6b7280;font-size:.9rem;margin-bottom:1rem;">
       버전이 고정되지 않은 패키지(<code>==</code> 없음)는 공급망 공격에 취약합니다.
     </p>
-    <table style="width:100%;font-size:.85rem;border-collapse:collapse;">
-      <thead>
-        <tr style="background:#f3f4f6;">
-          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">패키지</th>
-          <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">상태</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for req in requirements %}
-        <tr>
-          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;">{{ req }}</td>
-          <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;">
-            {% if '==' in req %}
-              <span style="background:#dcfce7;color:#166534;padding:.1rem .4rem;border-radius:3px;font-size:.75rem;">버전 고정</span>
-            {% else %}
-              <span style="background:#fef2f2;color:#b91c1c;padding:.1rem .4rem;border-radius:3px;font-size:.75rem;">버전 미고정 ⚠</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-wrap">
+      <table style="width:100%;font-size:.85rem;border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">패키지</th>
+            <th style="padding:.5rem .75rem;text-align:left;border-bottom:1px solid #e5e7eb;">상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in requirements %}
+          <tr>
+            <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;font-family:monospace;">{{ req }}</td>
+            <td style="padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;">
+              {% if '==' in req %}
+                <span style="background:#dcfce7;color:#166534;padding:.1rem .4rem;border-radius:3px;font-size:.75rem;">버전 고정</span>
+              {% else %}
+                <span style="background:#fef2f2;color:#b91c1c;padding:.1rem .4rem;border-radius:3px;font-size:.75rem;">버전 미고정 ⚠</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -49,10 +51,10 @@
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+<div class="code-compare-grid">
   <div class="card" style="border-top:4px solid #ef4444;">
     <div class="card-body" style="padding:1.25rem;">
-      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 방식</h3>
+      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">취약한 방식</h3>
       <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># requirements.txt (취약)
 flask          # 최신 버전 → 변경 가능
 requests       # 버전 미고정
@@ -64,7 +66,7 @@ sqlalchemy     # 공급망 공격 가능
   </div>
   <div class="card" style="border-top:4px solid #22c55e;">
     <div class="card-body" style="padding:1.25rem;">
-      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 방식</h3>
+      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">안전한 방식</h3>
       <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># requirements.txt (안전)
 flask==3.0.3
 requests==2.32.3
@@ -79,5 +81,5 @@ sqlalchemy==2.0.30
   </div>
 </div>
 
-<a href="{{ url_for('vulnlab_index') }}" style="color:#6b7280;font-size:.85rem;">← 목록으로</a>
+<a href="{{ url_for('vulnlab_index') }}" class="back-link">← 목록으로</a>
 {% endblock %}

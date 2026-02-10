@@ -541,6 +541,25 @@ button:hover {
   border-color: #bfdbfe;
 }
 
+.alert-warning {
+  background: #fef9c3;
+  color: #713f12;
+  border-color: #fde68a;
+}
+
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .small {
   color: var(--muted);
   font-size: 0.86rem;
@@ -1006,6 +1025,13 @@ button:hover {
   border-radius: 8px;
 }
 
+/* Small button variant used in VulnLab */
+.btn-sm {
+  padding: 7px 12px;
+  font-size: 0.85rem;
+  border-radius: 8px;
+}
+
 .dup-check-message {
   margin: 6px 0 0;
 }
@@ -1365,9 +1391,65 @@ button:hover {
 }
 
 /* ============================================================
+   VulnLab: Code comparison grid (responsive 2-col)
+   ============================================================ */
+.code-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* VulnLab: inline result comparison (log, exception, null) */
+.result-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+/* VulnLab: "back to list" link styled as subtle button */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: #475569;
+  font-size: .85rem;
+  text-decoration: none;
+  padding: .4rem .8rem;
+  border-radius: 8px;
+  transition: background .15s ease, color .15s ease;
+  margin-bottom: 1rem;
+}
+
+.back-link:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.back-link:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, .35);
+  outline-offset: 2px;
+}
+
+/* VulnLab: hero badge label (OWASP eyebrow) */
+.vuln-eyebrow {
+  font-size: .8rem;
+  opacity: .7;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  display: block;
+  margin-bottom: .35rem;
+}
+
+/* ============================================================
    Responsive: Mobile Hamburger + Nav
    ============================================================ */
 @media (max-width: 780px) {
+  .code-compare-grid,
+  .result-compare-grid {
+    grid-template-columns: 1fr;
+  }
   .hamburger {
     display: flex;
   }

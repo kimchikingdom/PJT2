@@ -2,12 +2,12 @@
 {% block title %}A06 – Insecure Design{% endblock %}
 
 {% block hero %}
-<div class="hero" style="background:linear-gradient(135deg,#1c1917,#44403c);color:#fff;padding:1.5rem 2rem;border-radius:8px;margin-bottom:1rem;">
-  <span style="font-size:.8rem;opacity:.7;text-transform:uppercase;letter-spacing:.1em;">OWASP Top 10:2025</span>
+<div class="hero" style="background:linear-gradient(135deg,#1c1917,#44403c);margin-bottom:1rem;">
+  <span class="vuln-eyebrow">OWASP Top 10:2025</span>
   <h1 style="margin:.25rem 0 .5rem;font-size:1.5rem;">A06 – Insecure Design</h1>
   <p style="margin:0;opacity:.85;">Rate Limiting 부재와 상태 전이 검증 없음을 시연합니다.</p>
 </div>
-<div class="alert alert-warning" role="alert">⚠ 교육 목적으로 의도적으로 구현된 취약점입니다.</div>
+<div class="alert alert-danger" role="alert">교육 목적으로 의도적으로 구현된 취약점입니다.</div>
 {% endblock %}
 
 {% block content %}
@@ -19,9 +19,9 @@
     <p style="color:#6b7280;font-size:.9rem;margin-bottom:1rem;">
       버튼을 반복 클릭해도 잠금이 걸리지 않습니다 (60초 내 요청 횟수만 카운팅).
     </p>
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
       <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem 1.5rem;text-align:center;">
-        <div style="font-size:2rem;font-weight:700;color:#b91c1c;">{{ request_count }}</div>
+        <div style="font-size:2rem;font-weight:700;color:#b91c1c;" aria-label="요청 횟수">{{ request_count }}</div>
         <div style="font-size:.75rem;color:#6b7280;">60초 내 요청 수</div>
       </div>
       <div style="color:#6b7280;font-size:.85rem;">
@@ -31,7 +31,7 @@
     </div>
     <form method="post" action="{{ url_for('vulnlab_a06') }}">
       <input type="hidden" name="action" value="request">
-      <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:.5rem 1.2rem;border-radius:4px;">
+      <button type="submit" class="btn btn-sm btn-danger" style="padding:.5rem 1.2rem;">
         요청 전송 (취약 – 잠금 없음)
       </button>
     </form>
@@ -48,24 +48,30 @@
     </p>
 
     {% if status_update_msg %}
-    <div class="alert alert-warning" style="margin-bottom:1rem;">{{ status_update_msg }}</div>
+    <div class="alert alert-warning" style="margin-bottom:1rem;" role="alert">{{ status_update_msg }}</div>
     {% endif %}
 
     {% if complaints %}
-    <form method="post" action="{{ url_for('vulnlab_a06') }}" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+    <form method="post" action="{{ url_for('vulnlab_a06') }}" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;">
       <input type="hidden" name="action" value="status_jump">
-      <select name="complaint_id" style="padding:.4rem .6rem;border:1px solid #d1d5db;border-radius:4px;font-size:.85rem;">
-        {% for c in complaints %}
-        <option value="{{ c.id }}">#{{ c.id }} – {{ c.title[:20] }} (현재: {{ c.status }})</option>
-        {% endfor %}
-      </select>
-      <select name="new_status" style="padding:.4rem .6rem;border:1px solid #d1d5db;border-radius:4px;font-size:.85rem;">
-        <option value="received">received</option>
-        <option value="in_review">in_review</option>
-        <option value="resolved">resolved</option>
-        <option value="rejected">rejected</option>
-      </select>
-      <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:.4rem .9rem;border-radius:4px;">상태 강제 변경</button>
+      <div>
+        <label for="complaint_select" style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.25rem;">민원 선택</label>
+        <select id="complaint_select" name="complaint_id" style="padding:.4rem .6rem;border:1px solid #d1d5db;border-radius:4px;font-size:.85rem;">
+          {% for c in complaints %}
+          <option value="{{ c.id }}">#{{ c.id }} – {{ c.title[:20] }} (현재: {{ c.status }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="new_status_select" style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.25rem;">변경할 상태</label>
+        <select id="new_status_select" name="new_status" style="padding:.4rem .6rem;border:1px solid #d1d5db;border-radius:4px;font-size:.85rem;">
+          <option value="received">received</option>
+          <option value="in_review">in_review</option>
+          <option value="resolved">resolved</option>
+          <option value="rejected">rejected</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-sm btn-danger" style="padding:.4rem .9rem;">상태 강제 변경</button>
     </form>
     {% else %}
     <p style="color:#6b7280;font-size:.85rem;">민원이 없습니다. 먼저 민원을 작성해주세요.</p>
@@ -73,10 +79,10 @@
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+<div class="code-compare-grid">
   <div class="card" style="border-top:4px solid #ef4444;">
     <div class="card-body" style="padding:1.25rem;">
-      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">❌ 취약한 설계</h3>
+      <h3 style="font-size:.95rem;color:#b91c1c;margin-bottom:.75rem;">취약한 설계</h3>
       <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># Rate Limiting 없음
 @app.route("/api/search")
 def search():
@@ -89,7 +95,7 @@ complaint.status = new_status  # 직접 변경</code></pre>
   </div>
   <div class="card" style="border-top:4px solid #22c55e;">
     <div class="card-body" style="padding:1.25rem;">
-      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">✅ 안전한 설계</h3>
+      <h3 style="font-size:.95rem;color:#15803d;margin-bottom:.75rem;">안전한 설계</h3>
       <pre style="background:#1e1e1e;color:#f8f8f2;padding:1rem;border-radius:6px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;"><code># Flask-Limiter로 Rate Limiting
 from flask_limiter import Limiter
 @limiter.limit("10 per minute")
@@ -107,5 +113,5 @@ if new_status not in VALID_TRANSITIONS[old]:
   </div>
 </div>
 
-<a href="{{ url_for('vulnlab_index') }}" style="color:#6b7280;font-size:.85rem;">← 목록으로</a>
+<a href="{{ url_for('vulnlab_index') }}" class="back-link">← 목록으로</a>
 {% endblock %}

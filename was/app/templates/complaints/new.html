@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}민원 접수{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 820px;">
+<div class="card" style="max-width: 820px; margin: 0 auto;">
   <div class="split">
     <div>
       <p class="eyebrow">New Complaint</p>
@@ -25,7 +25,17 @@
         <option value="digital_service">디지털 서비스</option>
       </select>
     </label>
-    <label>내용<textarea name="content" rows="10" required></textarea></label>
+    <label>이름<input name="patient_name" placeholder="홍길동" required></label>
+    <label>
+      주민번호
+      <input name="resident_number" placeholder="900101-1234567" pattern="\d{6}-[1-4]\d{6}" required>
+      <small style="color:#6b7280;">예: 900101-1234567</small>
+    </label>
+    <label>
+      진료 기록 / 증상 <small style="color:#6b7280;">(선택)</small>
+      <input name="medical_record" placeholder="예: 고혈압 진단, 당뇨 의심 등">
+    </label>
+    <label>내용<textarea name="content" rows="8" required></textarea></label>
     <div class="inline-actions">
       <button type="submit">접수</button>
       <a class="btn btn-subtle" href="{{ url_for('complaints_list') }}">취소</a>
