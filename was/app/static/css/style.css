@@ -188,10 +188,48 @@ main {
   z-index: 2;
 }
 
+.hero-main-content {
+  max-width: 860px;
+}
+
+.hero-lead {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.hero-meta {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hero-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 245, 249, 0.26);
+  background: rgba(15, 23, 42, 0.2);
+  color: rgba(248, 250, 252, 0.95);
+  font-size: 0.82rem;
+}
+
+.hero-meta-item strong {
+  font-weight: 700;
+  color: #ffffff;
+}
+
 .home-section-stack {
   display: flex;
   flex-direction: column;
   gap: 22px;
+}
+
+.home-section-stack > .grid > .card,
+.home-section-stack > .grid > .quick-stat {
+  margin-bottom: 0;
 }
 
 .eyebrow {
@@ -299,6 +337,16 @@ select:focus {
   border-color: var(--brand);
 }
 
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.35);
+  outline-offset: 2px;
+}
+
 .btn,
 button {
   display: inline-flex;
@@ -321,7 +369,7 @@ button:hover {
 }
 
 .btn-outline {
-  background: transparent;
+  background: #fff;
   color: var(--brand);
   border: 1px solid var(--brand);
 }
@@ -329,6 +377,15 @@ button:hover {
 .btn-outline:hover {
   color: #fff;
   background: var(--brand);
+}
+
+.btn-cta {
+  background: linear-gradient(135deg, #0f766e, #0f5f99);
+  box-shadow: 0 10px 20px rgba(8, 47, 73, 0.28);
+}
+
+.btn-cta:hover {
+  background: linear-gradient(135deg, #0e6c64, #0d567f);
 }
 
 .btn-danger {
@@ -420,6 +477,10 @@ button:hover {
 
 .table td.text-wrap {
   white-space: normal;
+}
+
+.table.table-cardize td::before {
+  content: none;
 }
 
 .badge {
@@ -1029,6 +1090,50 @@ button:hover {
   padding-top: 8px;
 }
 
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tabs-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tabs-trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabs-trigger:hover {
+  background: #e2e8f0;
+}
+
+.tabs-trigger.is-active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.tabs-panel {
+  display: block;
+}
+
 /* ============================================================
    Search Bar (posts/list)
    ============================================================ */
@@ -1313,9 +1418,79 @@ button:hover {
     gap: 16px;
   }
 
+  .hero-meta {
+    margin-top: 12px;
+  }
+
+  .hero-meta-item {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .table th,
   .table td {
     font-size: 0.86rem;
+  }
+
+  .table.table-cardize {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .table.table-cardize thead {
+    display: none;
+  }
+
+  .table.table-cardize tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .table.table-cardize tr {
+    display: block;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  .table.table-cardize th {
+    display: none;
+  }
+
+  .table.table-cardize td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    border-bottom: 1px dashed #dbe3ef;
+    padding: 8px 0;
+    white-space: normal;
+  }
+
+  .table.table-cardize td:last-child {
+    border-bottom: none;
+  }
+
+  .table.table-cardize td::before {
+    content: attr(data-label);
+    flex: 0 0 88px;
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .table.table-cardize .table-empty-row td {
+    display: block;
+    border-bottom: none;
+    padding: 4px 0;
+  }
+
+  .table.table-cardize .table-empty-row td::before {
+    content: none;
   }
 
   .stepper {
@@ -1384,6 +1559,16 @@ button:hover {
   .profile-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .tabs-nav {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tabs-trigger {
+    width: 100%;
+    justify-content: center;
   }
 
   .admin-nav-grid {
