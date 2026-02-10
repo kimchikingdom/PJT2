@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}공공 의료 민원 포털{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="{{ url_for('index') }}">
+        <span class="brand-badge">PH</span>
+        <strong>공공 의료 민원 포털</strong>
+      </a>
+      <nav class="nav-links">
+        <a class="nav-link" href="{{ url_for('health_info') }}">의료정보</a>
+        <a class="nav-link" href="{{ url_for('health_centers') }}">지역센터</a>
+        <a class="nav-link" href="{{ url_for('posts_list') }}">게시판</a>
+        <a class="nav-link" href="{{ url_for('notices_list') }}">공지사항</a>
+        {% if current_user.is_authenticated %}
+          <a class="nav-link" href="{{ url_for('complaints_list') }}">민원</a>
+          <a class="nav-link" href="{{ url_for('profile') }}">마이페이지</a>
+          {% if current_user.role == 'admin' %}
+            <a class="nav-link" href="{{ url_for('admin_dashboard') }}">관리자</a>
+            <a class="nav-link" href="{{ url_for('admin_logs') }}">로그 모니터링</a>
+            <a class="nav-link" href="{{ url_for('security_scenarios') }}">OWASP 시나리오</a>
+          {% endif %}
+          <a class="nav-link" href="{{ url_for('logout') }}">로그아웃</a>
+          <span class="role-chip">{{ current_user.username }} · {{ current_user.role }}</span>
+        {% else %}
+          <a class="nav-link" href="{{ url_for('login') }}">로그인</a>
+          <a class="nav-link" href="{{ url_for('register') }}">회원가입</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block hero %}{% endblock %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="container footer">
+    교육/실습용 시스템입니다. 실제 민감 정보는 입력하지 마세요.
+  </footer>
+</body>
+</html>

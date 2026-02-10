@@ -72,8 +72,7 @@ def admin_required(func):
     return wrapped
 
 
-def log_action(action, target_type=None, target_id=None, meta=None, actor_id=None, sensitive_data=None):
-    # A09 취약점: 민감한 정보(비밀번호, 주민번호 등)를 로그에 기록
+def log_action(action, target_type=None, target_id=None, meta=None, actor_id=None):
     entry = AuditLog(
         actor_id=(
             actor_id
@@ -84,7 +83,6 @@ def log_action(action, target_type=None, target_id=None, meta=None, actor_id=Non
         target_type=target_type,
         target_id=str(target_id) if target_id else None,
         meta=meta,
-        sensitive_data=sensitive_data,  # A09: 민감한 데이터 저장
     )
     try:
         db.session.add(entry)
@@ -195,16 +193,6 @@ def init_routes(app):
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            
-            # A09 취약점: 회원가입 시 비밀번호를 로그에 기록
-            log_action(
-                "user_registration",
-                "user",
-                user.id,
-                meta=f"username={username},email={email}",
-                sensitive_data=f"password={password},phone={phone}"
-            )
-            
             flash("회원가입이 완료되었습니다. 로그인하세요.", "success")
             return redirect(url_for("login"))
 
@@ -219,27 +207,13 @@ def init_routes(app):
 
             if user and user.check_password(password):
                 login_user(user)
-                # A09 취약점: 로그인 성공 시 비밀번호 기록
-                log_action(
-                    "login",
-                    "user",
-                    user.id,
-                    sensitive_data=f"password={password}"
-                )
+                log_action("login", "user", user.id)
                 flash("로그인 성공", "success")
                 return redirect(url_for("index"))
 
             attempted_id = username[:50] if username else None
             client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or "-"
-            # A09 취약점: 로그인 실패 시에도 시도한 비밀번호 기록
-            log_action(
-                "login_failed",
-                "user",
-                attempted_id,
-                meta=f"ip={client_ip}",
-                sensitive_data=f"attempted_password={password}",
-                actor_id=None
-            )
+            log_action("login_failed", "user", attempted_id, meta=f"ip={client_ip}", actor_id=None)
             flash("아이디 또는 비밀번호가 잘못되었습니다.", "danger")
 
         return render_template("auth/login.html")
@@ -266,13 +240,7 @@ def init_routes(app):
             current_user.full_name = full_name
             current_user.phone = phone
             db.session.commit()
-            # A09 취약점: 프로필 수정 시 민감한 정보 로깅
-            log_action(
-                "profile_update",
-                "user",
-                current_user.id,
-                sensitive_data=f"phone={phone}"
-            )
+            log_action("profile_update", "user", current_user.id)
             flash("프로필이 수정되었습니다.", "success")
             return redirect(url_for("profile"))
 
@@ -285,13 +253,6 @@ def init_routes(app):
         if snapshot:
             try:
                 mydata = json.loads(snapshot.payload_json)
-                # A09 취약점: 의료정보 접근 로깅 미흡
-                log_action(
-                    "mydata_view",
-                    "mydata",
-                    snapshot.id,
-                    sensitive_data=json.dumps(mydata)[:200]
-                )
             except json.JSONDecodeError:
                 mydata = None
         return render_template(

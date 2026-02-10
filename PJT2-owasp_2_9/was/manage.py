@@ -70,7 +70,6 @@ def seed_demo_cli():
     db.create_all()
     ensure_schema_upgrades()
     admin = ensure_default_admin()
-    # A02 취약점: 평문 비밀번호 사용
     user1 = ensure_user("user1", "user1@example.com", "Hong Gil Dong", "010-1111-1111", "user12345")
     user2 = ensure_user("user2", "user2@example.com", "Kim Min Ji", "010-2222-2222", "user12345")
 
@@ -131,7 +130,6 @@ def seed_demo_cli():
         .first()
     )
     if not existing_snapshot:
-        # A02 취약점: 의료정보를 평문으로 저장 (암호화 미적용)
         db.session.add(
             MyDataSnapshot(
                 user_id=user1.id,

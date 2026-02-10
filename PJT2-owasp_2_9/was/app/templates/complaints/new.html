@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}민원 접수{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 820px;">
+  <p class="eyebrow">New Complaint</p>
+  <h2>민원 접수</h2>
+  <form class="form" method="post">
+    <label>제목<input name="title" required></label>
+    <label>카테고리
+      <select name="category">
+        <option value="general">일반 행정</option>
+        <option value="medical">진료 서비스</option>
+        <option value="billing">보험/진료비</option>
+        <option value="privacy">개인정보/의무기록</option>
+        <option value="facility_access">시설/접근성</option>
+        <option value="vaccination">예방접종</option>
+        <option value="digital_service">디지털 서비스</option>
+      </select>
+    </label>
+    <label>내용<textarea name="content" rows="10" required></textarea></label>
+    <div class="inline-actions">
+      <button type="submit">접수</button>
+      <a class="btn btn-subtle" href="{{ url_for('complaints_list') }}">취소</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

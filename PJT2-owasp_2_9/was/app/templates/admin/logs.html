@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}감사 로그{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="split">
+    <div>
+      <p class="eyebrow">Admin Logs</p>
+      <h2>로그인/요청 감사 로그</h2>
+    </div>
+    <a class="btn btn-subtle" href="{{ url_for('admin_dashboard') }}">대시보드</a>
+  </div>
+
+  <form class="inline-actions" method="get" style="margin: 12px 0;">
+    <input name="q" value="{{ q }}" placeholder="사용자, 경로, 메타 검색" style="max-width: 320px; margin-top: 0;">
+    <select name="event" style="max-width: 180px; margin-top: 0;">
+      <option value="all" {% if event_filter == 'all' %}selected{% endif %}>전체 이벤트</option>
+      {% for event in event_options %}
+      <option value="{{ event }}" {% if event_filter == event %}selected{% endif %}>{{ event }}</option>
+      {% endfor %}
+    </select>
+    <select name="method" style="max-width: 150px; margin-top: 0;">
+      <option value="all" {% if method_filter == 'all' %}selected{% endif %}>전체 메서드</option>
+      {% for method in method_options %}
+      <option value="{{ method }}" {% if method_filter == method %}selected{% endif %}>{{ method }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">검색</button>
+    <a class="btn btn-subtle" href="{{ url_for('admin_logs') }}">초기화</a>
+  </form>
+
+  <p class="small">로그인 이력은 <code>login/login_failed/logout</code>, 웹 요청 이력은 <code>web_request</code> 이벤트로 조회됩니다.</p>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>시간</th>
+          <th>사용자</th>
+          <th>이벤트</th>
+          <th>유형/메서드</th>
+          <th>대상</th>
+          <th>상세</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td>{{ log.actor.username if log.actor else '-' }}</td>
+          <td>{{ log.action }}</td>
+          <td>{{ log.target_type or '-' }}</td>
+          <td>{{ log.target_id or '-' }}</td>
+          <td class="text-wrap">{{ log.meta or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-wrap">조건에 맞는 로그가 없습니다.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    {% if pagination.has_prev %}
+      <a class="btn btn-subtle" href="{{ url_for('admin_logs', page=pagination.prev_num, q=q, event=event_filter, method=method_filter) }}">이전</a>
+    {% endif %}
+    <span class="small">페이지 {{ pagination.page }} / {{ pagination.pages if pagination.pages else 1 }}</span>
+    {% if pagination.has_next %}
+      <a class="btn btn-subtle" href="{{ url_for('admin_logs', page=pagination.next_num, q=q, event=event_filter, method=method_filter) }}">다음</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

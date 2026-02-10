@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}게시물 상세{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="eyebrow">Post #{{ post.id }}</p>
+  <h2>{{ post.title }}</h2>
+  <p><span class="badge badge-open">{{ post_category_labels.get(post.category, post.category) }}</span></p>
+  <p class="small">작성자 {{ post.author.username }} · {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+  <div class="card" style="margin-top: 12px; background: var(--surface-soft); box-shadow: none;">
+    <p style="white-space: pre-wrap; margin: 0;">{{ post.content }}</p>
+  </div>
+</div>
+
+{% if current_user.is_authenticated and (current_user.id == post.user_id or current_user.role == 'admin') %}
+<div class="card">
+  <p class="eyebrow">Edit</p>
+  <h3>게시물 수정</h3>
+  <form class="form" method="post">
+    <label>분류
+      <select name="category" required>
+        {% for item in category_options %}
+        <option value="{{ item }}" {% if post.category == item %}selected{% endif %}>{{ post_category_labels.get(item, item) }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>제목<input name="title" value="{{ post.title }}" required></label>
+    <label>내용<textarea name="content" rows="10" required>{{ post.content }}</textarea></label>
+    <button type="submit">수정 저장</button>
+  </form>
+  <form method="post" action="{{ url_for('posts_delete', post_id=post.id) }}">
+    <button class="btn-danger" type="submit">삭제</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

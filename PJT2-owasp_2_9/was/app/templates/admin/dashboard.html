@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}관리자 대시보드{% endblock %}
+
+{% block hero %}
+<section class="hero">
+  <p class="eyebrow">Admin Console</p>
+  <h2>운영 지표와 최근 활동을 한 화면에서 관리</h2>
+  <p>사용자, 게시물, 공지, 민원 데이터를 통합 관찰하고 운영 이슈를 빠르게 처리할 수 있습니다.</p>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+  <section class="quick-stat"><span class="small">사용자 수</span><b>{{ stats.users }}</b></section>
+  <section class="quick-stat"><span class="small">게시물 수</span><b>{{ stats.posts }}</b></section>
+  <section class="quick-stat"><span class="small">공지 수</span><b>{{ stats.notices }}</b></section>
+  <section class="quick-stat"><span class="small">민원 수</span><b>{{ stats.complaints }}</b></section>
+</div>
+
+<div class="card">
+  <h3>민원 처리 현황</h3>
+  <p><strong>미처리/검토중 건수:</strong> {{ stats.complaints_pending }}</p>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>카테고리</th><th>건수</th></tr></thead>
+      <tbody>
+        {% for category, count in complaint_category_stats %}
+        <tr>
+          <td>{{ complaint_category_labels.get(category, category) }}</td>
+          <td>{{ count }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2">집계할 민원이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="split">
+    <h3>관리 메뉴</h3>
+    <span class="small">운영 작업 바로가기</span>
+  </div>
+  <div class="inline-actions">
+    <a class="btn" href="{{ url_for('admin_users') }}">사용자 관리</a>
+    <a class="btn" href="{{ url_for('admin_posts') }}">게시물 관리</a>
+    <a class="btn" href="{{ url_for('admin_notices') }}">공지 관리</a>
+    <a class="btn" href="{{ url_for('admin_complaints') }}">민원 관리</a>
+    <a class="btn" href="{{ url_for('admin_logs') }}">로그 모니터링</a>
+    <a class="btn" href="{{ url_for('security_scenarios') }}">OWASP 시나리오</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="split">
+    <h3>최근 감사 로그</h3>
+    <a class="btn btn-subtle" href="{{ url_for('admin_logs') }}">전체 로그 보기</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>시간</th><th>행동</th><th>대상</th><th>ID</th><th>메타</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td>{{ log.action }}</td>
+          <td>{{ log.target_type or '-' }}</td>
+          <td>{{ log.target_id or '-' }}</td>
+          <td class="text-wrap">{{ log.meta or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-wrap">기록된 로그가 없습니다.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

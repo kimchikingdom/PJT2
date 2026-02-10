@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}{{ program.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <p class="eyebrow">Program Detail</p>
+  <h2>{{ program.name }}</h2>
+  <p><span class="badge badge-resolved">{{ program.category }}</span></p>
+  <p><strong>지원 대상:</strong> {{ program.eligibility }}</p>
+  <p><strong>신청 방법:</strong> {{ program.how_to_apply }}</p>
+  <p><strong>문의:</strong> {{ program.contact }}</p>
+</div>
+
+<div class="card">
+  <h3>준비 서류</h3>
+  <ul>
+    {% for item in program.documents %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+  <div class="inline-actions" style="margin-top: 10px;">
+    <a class="btn btn-subtle" href="{{ url_for('health_info') }}">정보 목록</a>
+    {% if current_user.is_authenticated %}
+      <a class="btn" href="{{ url_for('complaints_new') }}">관련 민원 접수</a>
+    {% else %}
+      <a class="btn" href="{{ url_for('login') }}">로그인 후 민원 접수</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}{{ scenario.code }} {{ scenario.title }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <p class="eyebrow">{{ scenario.code }}</p>
+  <h2>{{ scenario.title }}</h2>
+  <p>{{ scenario.summary }}</p>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <h3>서비스 시나리오</h3>
+    <p class="text-wrap">{{ scenario.service_case }}</p>
+  </section>
+  <section class="card">
+    <h3>점검 포인트</h3>
+    <ul>
+      {% for item in scenario.checkpoints %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="card">
+  <h3>권장 개선 방향</h3>
+  <ul>
+    {% for item in scenario.mitigations %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+  <a class="btn" href="{{ url_for('security_scenarios') }}">목록으로</a>
+</div>
+{% endblock %}

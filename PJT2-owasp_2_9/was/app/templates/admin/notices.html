@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}공지 관리{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <section class="card">
+    <p class="eyebrow">Create Notice</p>
+    <h2>공지 등록</h2>
+    <form class="form" method="post">
+      <input type="hidden" name="page" value="{{ pagination.page }}">
+      <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="visibility" value="{{ visibility }}">
+      <label>제목<input name="title" required></label>
+      <label>내용<textarea name="content" rows="9" required></textarea></label>
+      <label><input type="checkbox" name="is_published" style="width: auto; margin-right: 6px;">바로 공개</label>
+      <button type="submit">등록</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="split">
+      <div>
+        <p class="eyebrow">Manage</p>
+        <h2>공지 목록</h2>
+      </div>
+      <a class="btn btn-subtle" href="{{ url_for('admin_dashboard') }}">대시보드</a>
+    </div>
+
+    <form class="inline-actions" method="get" style="margin: 12px 0;">
+      <input name="q" value="{{ q }}" placeholder="제목/내용 검색" style="max-width: 260px; margin-top: 0;">
+      <select name="visibility" style="max-width: 140px; margin-top: 0;">
+        <option value="all" {% if visibility == 'all' %}selected{% endif %}>전체 상태</option>
+        <option value="published" {% if visibility == 'published' %}selected{% endif %}>공개</option>
+        <option value="private" {% if visibility == 'private' %}selected{% endif %}>비공개</option>
+      </select>
+      <button type="submit">검색</button>
+      <a class="btn btn-subtle" href="{{ url_for('admin_notices') }}">초기화</a>
+    </form>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>ID</th><th>제목</th><th>상태</th><th>액션</th></tr></thead>
+        <tbody>
+          {% for notice in notices %}
+          <tr>
+            <td>{{ notice.id }}</td>
+            <td class="text-wrap">{{ notice.title }}</td>
+            <td>{% if notice.is_published %}<span class="badge badge-published">공개</span>{% else %}<span class="badge badge-private">비공개</span>{% endif %}</td>
+            <td>
+              <form method="post" action="{{ url_for('admin_notice_publish', notice_id=notice.id, page=pagination.page, q=q, visibility=visibility) }}">
+                <button type="submit">공개/비공개 전환</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-wrap">검색 조건에 맞는 공지가 없습니다.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      {% if pagination.has_prev %}
+        <a class="btn btn-subtle" href="{{ url_for('admin_notices', page=pagination.prev_num, q=q, visibility=visibility) }}">이전</a>
+      {% endif %}
+      <span class="small">페이지 {{ pagination.page }} / {{ pagination.pages if pagination.pages else 1 }}</span>
+      {% if pagination.has_next %}
+        <a class="btn btn-subtle" href="{{ url_for('admin_notices', page=pagination.next_num, q=q, visibility=visibility) }}">다음</a>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

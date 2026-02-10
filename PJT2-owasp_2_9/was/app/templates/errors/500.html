@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}500 Server Error{% endblock %}
+{% block content %}
+<div class="card error-card">
+  <p class="eyebrow">Error</p>
+  <h2>서버 처리 중 오류가 발생했습니다.</h2>
+  <p>잠시 후 다시 시도해주세요. 문제가 반복되면 관리자에게 문의하세요.</p>
+  <a class="btn" href="{{ url_for('index') }}">메인으로 이동</a>
+</div>
+{% endblock %}

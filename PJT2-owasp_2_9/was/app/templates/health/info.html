@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}공공 의료 정보{% endblock %}
+
+{% block hero %}
+<section class="hero">
+  <p class="eyebrow">Public Healthcare Information</p>
+  <h2>지원사업, 예방정보, 자주 묻는 질문</h2>
+  <p>국민이 자주 찾는 공공의료 정보를 한 페이지에서 확인하고 필요한 민원을 빠르게 접수할 수 있습니다.</p>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="split">
+    <h3>주요 공공 의료 소식</h3>
+    <a class="btn btn-subtle" href="{{ url_for('health_centers') }}">지역센터 보기</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>항목</th><th>대상</th><th>안내 채널</th></tr></thead>
+      <tbody>
+        {% for item in health_news %}
+        <tr>
+          <td class="text-wrap"><strong>{{ item.title }}</strong><br><span class="small">{{ item.summary }}</span></td>
+          <td>{{ item.target }}</td>
+          <td>{{ item.channel }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3>공공 의료 지원사업</h3>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>사업명</th><th>분야</th><th>지원 대상</th><th>상세</th></tr></thead>
+      <tbody>
+        {% for program in health_programs %}
+        <tr>
+          <td>{{ program.name }}</td>
+          <td>{{ program.category }}</td>
+          <td class="text-wrap">{{ program.eligibility }}</td>
+          <td><a class="btn btn-subtle" href="{{ url_for('health_program_detail', program_id=program.id) }}">열기</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3>자주 묻는 질문</h3>
+  {% for faq in health_faq %}
+  <div class="card" style="margin: 10px 0; background: var(--surface-soft); box-shadow: none;">
+    <p><strong>Q. {{ faq.question }}</strong></p>
+    <p class="muted">A. {{ faq.answer }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

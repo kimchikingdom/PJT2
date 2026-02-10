@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block title %}마이페이지{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <section class="card">
+    <p class="eyebrow">Account</p>
+    <h2>내 계정 정보</h2>
+    <p><strong>아이디</strong> {{ current_user.username }}</p>
+    <p><strong>이메일</strong> {{ current_user.email }}</p>
+    <p><strong>권한</strong> {{ current_user.role }}</p>
+    <p class="small">생성일 {{ current_user.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+  </section>
+
+  <section class="card">
+    <p class="eyebrow">Profile</p>
+    <h2>프로필 수정</h2>
+    <form class="form" method="post">
+      <label>이름<input name="full_name" value="{{ current_user.full_name }}" required></label>
+      <label>연락처<input name="phone" value="{{ current_user.phone }}" required></label>
+      <button type="submit">저장</button>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <div class="split">
+    <div>
+      <p class="eyebrow">Medical MyData</p>
+      <h2>의료 마이데이터 (목데이터)</h2>
+    </div>
+    <form method="post" action="{{ url_for('profile_mydata_fetch') }}" class="inline-actions">
+      <label class="checkline">
+        <input type="checkbox" name="consent_mydata" required>
+        의료 마이데이터 수집/이용에 동의합니다.
+      </label>
+      <button type="submit">내 의료데이터 불러오기</button>
+    </form>
+  </div>
+
+  {% if mydata_snapshot and mydata %}
+    {% set visits = mydata.get('visits', []) %}
+    {% set medications = mydata.get('medications', []) %}
+    {% set vaccinations = mydata.get('vaccinations', []) %}
+    {% set checkups = mydata.get('checkups', {}) %}
+    {% set insurance = mydata.get('insurance', {}) %}
+    {% set cost = mydata.get('costSummary', {}) %}
+    {% set alerts = mydata.get('alerts', []) %}
+    {% set profile = mydata.get('profile', {}) %}
+    <p class="small">최근 동기화: {{ mydata_snapshot.fetched_at.strftime('%Y-%m-%d %H:%M:%S') }} / 출처: {{ mydata_snapshot.source }}</p>
+
+    <div class="grid grid-3">
+      <section class="quick-stat mydata-kpi">
+        <span class="small">최근 진료일</span>
+        <b>{{ visits[0]['date'] if visits else '-' }}</b>
+      </section>
+      <section class="quick-stat mydata-kpi">
+        <span class="small">복약 건수</span>
+        <b>{{ medications|length }}</b>
+      </section>
+      <section class="quick-stat mydata-kpi">
+        <span class="small">1년 본인부담금</span>
+        <b>{{ "{:,}".format(cost.get('outOfPocketTotal', 0)) }}원</b>
+      </section>
+    </div>
+
+    <div class="grid grid-2">
+      <section class="card">
+        <h3>기본 의료 프로필</h3>
+        <p><strong>이름</strong> {{ profile.get('name', '-') }}</p>
+        <p><strong>생년월일</strong> {{ profile.get('birthDate', '-') }}</p>
+        <p><strong>성별</strong> {{ profile.get('gender', '-') }}</p>
+        <p><strong>혈액형</strong> {{ profile.get('bloodType', '-') }}</p>
+        <p><strong>알레르기</strong> {{ profile.get('allergy', '-') }}</p>
+      </section>
+      <section class="card">
+        <h3>보험/검진 요약</h3>
+        <p><strong>보험 유형</strong> {{ insurance.get('type', '-') }}</p>
+        <p><strong>자격 상태</strong> {{ insurance.get('eligibility', '-') }}</p>
+        <p><strong>본인부담률</strong> {{ insurance.get('copayRate', '-') }}</p>
+        <p><strong>혈압</strong> {{ checkups.get('bloodPressure', '-') }}</p>
+        <p><strong>공복혈당</strong> {{ checkups.get('fastingGlucose', '-') }}</p>
+        <p><strong>당화혈색소(HbA1c)</strong> {{ checkups.get('hba1c', '-') }}</p>
+        <p><strong>총콜레스테롤</strong> {{ checkups.get('totalCholesterol', '-') }}</p>
+        <p><strong>BMI</strong> {{ checkups.get('bmi', '-') }}</p>
+      </section>
+    </div>
+
+    <div class="card">
+      <h3>건강 주의 알림</h3>
+      <ul>
+        {% for alert in alerts %}
+        <li>{{ alert }}</li>
+        {% else %}
+        <li>이상 징후 없음</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>진료일</th><th>의료기관</th><th>진료과</th><th>진단코드</th><th>진단명</th></tr></thead>
+        <tbody>
+          {% for item in visits %}
+          <tr>
+            <td>{{ item.date }}</td>
+            <td>{{ item.provider }}</td>
+            <td>{{ item.department }}</td>
+            <td>{{ item.diagnosisCode }}</td>
+            <td class="text-wrap">{{ item.diagnosisName }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-wrap">진료 이력이 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid grid-2">
+      <section class="card">
+        <h3>처방/복약</h3>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>약품명</th><th>1회량</th><th>1일횟수</th><th>투약일수</th></tr></thead>
+            <tbody>
+              {% for med in medications %}
+              <tr>
+                <td class="text-wrap">{{ med.name }}</td>
+                <td>{{ med.dose }}</td>
+                <td>{{ med.frequencyPerDay }}</td>
+                <td>{{ med.days }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-wrap">복약 정보가 없습니다.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>예방접종</h3>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>백신명</th><th>접종일</th><th>차수</th></tr></thead>
+            <tbody>
+              {% for shot in vaccinations %}
+              <tr>
+                <td>{{ shot.name }}</td>
+                <td>{{ shot.date }}</td>
+                <td>{{ shot.doseNo }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-wrap">접종 이력이 없습니다.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  {% else %}
+    <p class="small">아직 불러온 의료 데이터가 없습니다. 동의 후 <strong>내 의료데이터 불러오기</strong>를 눌러주세요.</p>
+  {% endif %}
+</section>
+{% endblock %}
