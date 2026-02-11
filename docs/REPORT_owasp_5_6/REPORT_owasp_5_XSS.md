@@ -1,4 +1,4 @@
-# [취약점 분석 보고서] OWASP Top 10:2025 - A03: Injection (Cross-Site Scripting)
+# [취약점 분석 보고서] OWASP Top 10:2025 - A05: Injection (Cross-Site Scripting)
 
 ## 1. 공격지점 (Attack Surface)
 - **URL**: `http://localhost:8090/posts`

