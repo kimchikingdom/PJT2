@@ -92,7 +92,26 @@
 - 요청 필드: `consent_mydata=on` (동의 체크)
 - 성공: `302 /profile`, flash `success`
 - 실패: `302 /profile`, flash `danger` (동의 누락)
-- DB 영향: `my_data_snapshot` 생성, `audit_log` 기록(`mydata_fetch`)
+- DB 영향:
+  - `provider_subject`(미존재 시) 시드 보장
+  - `provider_consent`(미존재 시) 생성(사용자-제공기관 subject 1:1 연결)
+  - `provider_access_token` 발급(목데이터)
+  - `my_data_snapshot` 생성, `audit_log` 기록(`mydata_fetch`)
+
+### (Mock Provider) `POST /provider/oauth/token`
+- 권한: Public (단, client credential 필요)
+- 목적: 제공기관 access token 발급(목데이터)
+- 요청 필드: `client_id`, `client_secret`, `grant_type=consent`, `consent_id`
+- 성공: `200` JSON `{access_token, token_type, expires_in, consent_id}`
+- 실패: `401 invalid_client`, `400 invalid_request`, `404 invalid_consent`
+- 비고: 교육/실습용 제공기관 API 입니다.
+
+### (Mock Provider) `GET /provider/api/v1/mydata`
+- 권한: Public (단, Bearer token 필요)
+- 목적: 제공기관이 보유한 의료 마이데이터 조회(목데이터)
+- 헤더: `Authorization: Bearer <access_token>`
+- 성공: `200` JSON (의료 마이데이터 payload)
+- 실패: `401 invalid_token`
 
 ## 4.2 게시판
 

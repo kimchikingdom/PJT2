@@ -3,7 +3,7 @@ import json
 
 from app import create_app, db
 from app.models import Complaint, MyDataSnapshot, Notice, Post, User, utc_now
-from app.mydata_mock import generate_mock_medical_mydata
+from app.provider_service import ensure_provider_subjects, portal_fetch_mydata_via_provider_api
 from sqlalchemy import inspect, text
 
 app = create_app()
@@ -14,6 +14,7 @@ def init_db_cli():
     db.create_all()
     ensure_schema_upgrades()
     ensure_default_admin()
+    ensure_provider_subjects(app.config.get("PROVIDER_SEED_SUBJECTS", 100))
     print("Database initialized.")
 
 
@@ -103,6 +104,7 @@ def seed_demo_cli():
     db.create_all()
     ensure_schema_upgrades()
     admin = ensure_default_admin()
+    ensure_provider_subjects(app.config.get("PROVIDER_SEED_SUBJECTS", 100))
     user1 = ensure_user("user1", "user1@example.com", "Hong Gil Dong", "010-1111-1111", "user12345")
     user2 = ensure_user("user2", "user2@example.com", "Kim Min Ji", "010-2222-2222", "user12345")
 
@@ -163,14 +165,20 @@ def seed_demo_cli():
         .first()
     )
     if not existing_snapshot:
+        payload, _, _ = portal_fetch_mydata_via_provider_api(
+            user1,
+            client_id=app.config.get("PROVIDER_CLIENT_ID", "portal-client"),
+            ttl_seconds=app.config.get("PROVIDER_TOKEN_TTL_SECONDS", 600),
+            seed_subjects=app.config.get("PROVIDER_SEED_SUBJECTS", 100),
+        )
         db.session.add(
             MyDataSnapshot(
                 user_id=user1.id,
-                source="MOCK",
+                source="PROVIDER_API",
                 consent_given=True,
                 consent_at=utc_now(),
                 payload_json=json.dumps(
-                    generate_mock_medical_mydata(user1),
+                    payload,
                     ensure_ascii=False,
                 ),
                 fetched_at=utc_now(),
@@ -186,4 +194,5 @@ if __name__ == "__main__":
         db.create_all()
         ensure_schema_upgrades()
         ensure_default_admin()
+        ensure_provider_subjects(app.config.get("PROVIDER_SEED_SUBJECTS", 100))
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)

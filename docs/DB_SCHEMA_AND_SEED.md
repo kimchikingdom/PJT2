@@ -92,6 +92,51 @@
 | fetched_at | DATETIME | NOT NULL | 불러온 시각 |
 | created_at | DATETIME | NOT NULL | 생성 시각 |
 
+## 1.7 provider_subject (의료 마이데이터 제공기관 데이터)
+
+외부 MyData 제공기관이 보유한 마스터 데이터(목데이터) 테이블입니다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | INT | PK, AUTO_INCREMENT | 제공기관 Subject ID |
+| subject_ref | VARCHAR(32) | UNIQUE, NOT NULL | 외부 식별자 (예: `SUBJ-0001`) |
+| full_name | VARCHAR(100) | NOT NULL | 이름 |
+| birth_date | DATE | NULL | 생년월일 |
+| gender | VARCHAR(1) | NULL | `M`/`F` |
+| resident_number | VARCHAR(20) | NULL | 주민번호(목데이터, 데모용) |
+| phone | VARCHAR(30) | NULL | 연락처(목데이터) |
+| payload_json | TEXT | NOT NULL | 의료 마이데이터 JSON |
+| created_at | DATETIME | NOT NULL | 생성 시각 |
+| updated_at | DATETIME | NULL | 갱신 시각 |
+
+## 1.8 provider_consent (동의/연결)
+
+포털 사용자와 제공기관 subject 데이터를 1:1로 연결하는 동의 레코드입니다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | INT | PK, AUTO_INCREMENT | 동의 ID |
+| user_id | INT | FK -> user.id, UNIQUE, NOT NULL | 포털 사용자 |
+| provider_subject_id | INT | FK -> provider_subject.id, UNIQUE, NOT NULL | 제공기관 subject |
+| status | VARCHAR(20) | NOT NULL, default `active` | `active`/`revoked` |
+| consent_at | DATETIME | NOT NULL | 동의 시각 |
+| revoked_at | DATETIME | NULL | 철회 시각 |
+| created_at | DATETIME | NOT NULL | 생성 시각 |
+
+## 1.9 provider_access_token (제공기관 토큰)
+
+제공기관이 발급한 access token(목데이터) 저장용 테이블입니다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | INT | PK, AUTO_INCREMENT | 토큰 ID |
+| token | VARCHAR(128) | UNIQUE, NOT NULL | access token |
+| client_id | VARCHAR(80) | NULL | 클라이언트 식별자 |
+| consent_id | INT | FK -> provider_consent.id, NOT NULL | 동의 ID |
+| issued_at | DATETIME | NOT NULL | 발급 시각 |
+| expires_at | DATETIME | NOT NULL | 만료 시각 |
+| revoked_at | DATETIME | NULL | 폐기 시각 |
+
 ## 2. 권장 인덱스
 
 - `post(user_id, created_at)`
@@ -100,6 +145,9 @@
 - `complaint(user_id, status, created_at)`
 - `audit_log(actor_id, created_at)`
 - `my_data_snapshot(user_id, fetched_at)`
+- `provider_subject(subject_ref)`
+- `provider_consent(user_id)`
+- `provider_access_token(token)`
 
 ## 3. 최소 시드 데이터
 
@@ -112,6 +160,7 @@
 - 공지 2건 (공개 1, 비공개 1)
 - 민원 2건 (`user1` 접수)
 - 의료 마이데이터 스냅샷 1건 (`user1`)
+- 제공기관 subject 100건 (`provider_subject`)
 
 ## 3.1 시드 명령
 
@@ -130,6 +179,9 @@ SELECT COUNT(*) AS notices FROM notice;
 SELECT COUNT(*) AS complaints FROM complaint;
 SELECT COUNT(*) AS logs FROM audit_log;
 SELECT COUNT(*) AS mydata FROM my_data_snapshot;
+SELECT COUNT(*) AS provider_subjects FROM provider_subject;
+SELECT COUNT(*) AS provider_consents FROM provider_consent;
+SELECT COUNT(*) AS provider_tokens FROM provider_access_token;
 ```
 
 기준.
@@ -138,6 +190,7 @@ SELECT COUNT(*) AS mydata FROM my_data_snapshot;
 - notices >= 2
 - complaints >= 2
 - mydata >= 1
+- provider_subjects >= 100
 
 ## 5. 데이터 정합성 체크
 

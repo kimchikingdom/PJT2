@@ -69,6 +69,15 @@
     <button type="submit" style="margin-top: 8px;">로그인</button>
   </form>
 
+  {% if login_fail_count and login_fail_count > 0 %}
+    <div class="alert alert-warning" role="status" aria-live="polite" style="margin-top: 12px;">
+      로그인 실패 <strong>{{ login_fail_count }}</strong>회 (세션 기준)
+      {% if login_last_failed_username and login_last_failed_username != '-' %}
+        <span class="small" style="display: block; margin-top: 4px;">최근 시도: {{ login_last_failed_username }}</span>
+      {% endif %}
+    </div>
+  {% endif %}
+
   <div class="auth-divider">
     계정이 없다면 <a href="{{ url_for('register') }}">회원가입</a>을 먼저 진행하세요.
   </div>

@@ -12,6 +12,7 @@ from app.models import (
     PostAttachment,
     User,
 )
+from app.provider_service import ensure_provider_subjects
 
 
 def _create_user(username, role="user"):
@@ -508,6 +509,7 @@ def test_profile_mydata_fetch_and_render(tmp_path):
 
     with app.app_context():
         db.create_all()
+        ensure_provider_subjects(20)
         _create_user("mydatauser", role="user")
 
     client = app.test_client()
@@ -529,7 +531,7 @@ def test_profile_mydata_fetch_and_render(tmp_path):
         )
         assert snapshot is not None
         payload = json.loads(snapshot.payload_json)
-        assert payload["source"] == "MOCK"
+        assert payload["source"] == "PROVIDER_API"
         assert len(payload["visits"]) >= 1
 
     profile_page = client.get("/profile", follow_redirects=False)
@@ -549,6 +551,7 @@ def test_profile_mydata_report_pdf_download(tmp_path):
 
     with app.app_context():
         db.create_all()
+        ensure_provider_subjects(20)
         _create_user("myreportuser", role="user")
 
     client = app.test_client()

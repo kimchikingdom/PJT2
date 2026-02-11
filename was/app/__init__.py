@@ -20,6 +20,15 @@ def create_app(config_override=None):
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         MAX_CONTENT_LENGTH=10 * 1024 * 1024,
+        # Mock "external" MyData Provider settings
+        PROVIDER_CLIENT_ID=os.environ.get("PROVIDER_CLIENT_ID", "portal-client"),
+        PROVIDER_CLIENT_SECRET=os.environ.get(
+            "PROVIDER_CLIENT_SECRET", "portal-secret"
+        ),
+        PROVIDER_TOKEN_TTL_SECONDS=int(
+            os.environ.get("PROVIDER_TOKEN_TTL_SECONDS", "600")
+        ),
+        PROVIDER_SEED_SUBJECTS=int(os.environ.get("PROVIDER_SEED_SUBJECTS", "100")),
         POST_UPLOAD_DIR=os.environ.get(
             "POST_UPLOAD_DIR",
             os.path.join(os.path.dirname(__file__), "static", "uploads", "posts"),

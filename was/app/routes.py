@@ -21,6 +21,7 @@ from flask import (
     Response,
     render_template,
     request,
+    session,
     send_from_directory,
     url_for,
 )
@@ -52,10 +53,16 @@ from app.models import (
     Notice,
     Post,
     PostAttachment,
+    ProviderConsent,
     User,
     utc_now,
 )
-from app.mydata_mock import generate_mock_medical_mydata
+from app.provider_service import (
+    fetch_provider_mydata_by_token,
+    issue_provider_access_token,
+    portal_fetch_mydata_via_provider_api,
+    validate_provider_client,
+)
 from app.security_catalog import OWASP_TOP10_SCENARIOS
 from app.validators import (
     COMPLAINT_CATEGORY_SET,
@@ -659,6 +666,8 @@ def init_routes(app):
             user = User.query.filter_by(username=username).first()
 
             if user and user.check_password(password):
+                session.pop("login_fail_count", None)
+                session.pop("login_last_failed_username", None)
                 login_meta = build_login_meta(user.username, "success", client_ip, user_agent)
                 log_action(
                     "login_attempt",
@@ -700,9 +709,17 @@ def init_routes(app):
                 meta=login_meta,
                 actor_id=None,
             )
+            fail_count = int(session.get("login_fail_count", 0) or 0) + 1
+            session["login_fail_count"] = fail_count
+            session["login_last_failed_username"] = attempted_id
             flash("아이디 또는 비밀번호가 잘못되었습니다.", "danger")
 
-        return render_template("auth/login.html")
+        fail_count = int(session.get("login_fail_count", 0) or 0)
+        return render_template(
+            "auth/login.html",
+            login_fail_count=fail_count,
+            login_last_failed_username=session.get("login_last_failed_username"),
+        )
 
     @app.route("/logout")
     @login_required
@@ -820,6 +837,59 @@ def init_routes(app):
             post_category_labels=POST_CATEGORY_LABELS,
         )
 
+    # ── Mock MyData Provider API ────────────────────────────────────────────────
+
+    @app.route("/provider/oauth/token", methods=["POST"])
+    def provider_oauth_token():
+        data = request.get_json(silent=True) or {}
+        client_id = (data.get("client_id") or request.form.get("client_id") or "").strip()
+        client_secret = (data.get("client_secret") or request.form.get("client_secret") or "").strip()
+        grant_type = (data.get("grant_type") or request.form.get("grant_type") or "consent").strip()
+        consent_raw = data.get("consent_id") or request.form.get("consent_id")
+        try:
+            consent_id = int(consent_raw) if consent_raw is not None else None
+        except (TypeError, ValueError):
+            consent_id = None
+
+        if not validate_provider_client(
+            client_id,
+            client_secret,
+            expected_id=current_app.config.get("PROVIDER_CLIENT_ID", "portal-client"),
+            expected_secret=current_app.config.get("PROVIDER_CLIENT_SECRET", "portal-secret"),
+        ):
+            return jsonify({"error": "invalid_client"}), 401
+
+        if grant_type != "consent":
+            return jsonify({"error": "unsupported_grant_type"}), 400
+        if consent_id is None:
+            return jsonify({"error": "invalid_request", "error_description": "consent_id is required"}), 400
+
+        consent = db.session.get(ProviderConsent, consent_id)
+        if consent is None or consent.status != "active":
+            return jsonify({"error": "invalid_consent"}), 404
+
+        ttl_seconds = int(current_app.config.get("PROVIDER_TOKEN_TTL_SECONDS", 600))
+        token = issue_provider_access_token(consent, client_id=client_id, ttl_seconds=ttl_seconds)
+        return jsonify(
+            {
+                "access_token": token.token,
+                "token_type": "Bearer",
+                "expires_in": ttl_seconds,
+                "consent_id": consent.id,
+            }
+        )
+
+    @app.route("/provider/api/v1/mydata", methods=["GET"])
+    def provider_api_mydata():
+        authz = request.headers.get("Authorization", "")
+        token_str = ""
+        if authz.lower().startswith("bearer "):
+            token_str = authz.split(" ", 1)[1].strip()
+        payload = fetch_provider_mydata_by_token(token_str)
+        if payload is None:
+            return jsonify({"error": "invalid_token"}), 401
+        return jsonify(payload)
+
     @app.route("/profile/mydata/fetch", methods=["POST"])
     @login_required
     def profile_mydata_fetch():
@@ -828,10 +898,15 @@ def init_routes(app):
             flash("의료 마이데이터 불러오기 전에 수집/이용 동의가 필요합니다.", "danger")
             return redirect(url_for("profile"))
 
-        payload = generate_mock_medical_mydata(current_user)
+        payload, provider_consent, provider_token = portal_fetch_mydata_via_provider_api(
+            current_user,
+            client_id=current_app.config.get("PROVIDER_CLIENT_ID", "portal-client"),
+            ttl_seconds=current_app.config.get("PROVIDER_TOKEN_TTL_SECONDS", 600),
+            seed_subjects=current_app.config.get("PROVIDER_SEED_SUBJECTS", 100),
+        )
         snapshot = MyDataSnapshot(
             user_id=current_user.id,
-            source="MOCK",
+            source="PROVIDER_API",
             consent_given=True,
             consent_at=utc_now(),
             payload_json=json.dumps(payload, ensure_ascii=False),
@@ -839,8 +914,18 @@ def init_routes(app):
         )
         db.session.add(snapshot)
         db.session.commit()
-        log_action("mydata_fetch", "mydata", snapshot.id, meta="source=MOCK")
-        flash("의료 마이데이터를 불러왔습니다. (목데이터)", "success")
+        log_action(
+            "mydata_fetch",
+            "mydata",
+            snapshot.id,
+            meta=(
+                "source=PROVIDER_API;"
+                f"consent_id={provider_consent.id};"
+                f"token_id={provider_token.id};"
+                f"subject_ref={payload.get('providerSubjectRef', '-')}"
+            ),
+        )
+        flash("의료 마이데이터를 불러왔습니다. (제공기관 API 목데이터)", "success")
         return redirect(url_for("profile"))
 
     @app.route("/profile/mydata/report.pdf")

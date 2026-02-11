@@ -14,7 +14,7 @@
 |---|---|---:|---|---|---|---|
 | FR-001 | 회원가입 | P0 | `/register` | `was/app/routes.py`, `was/app/templates/auth/register.html` | TC-AUTH-01 | 중복/누락 검증 포함 성공 |
 | FR-002 | 로그인/로그아웃 | P0 | `/login`, `/logout` | `was/app/routes.py`, `was/app/templates/auth/login.html` | TC-AUTH-02,03,04 | 세션 생성/삭제 정상 |
-| FR-003 | 마이페이지/의료 마이데이터 | P0 | `/profile`, `/profile/mydata/fetch` | `was/app/routes.py`, `was/app/mydata_mock.py`, `was/app/templates/auth/profile.html` | TC-PROF-01,02 | 프로필 수정 + 동의 기반 마이데이터 조회 |
+| FR-003 | 마이페이지/의료 마이데이터 | P0 | `/profile`, `/profile/mydata/fetch` | `was/app/routes.py`, `was/app/provider_service.py`, `was/app/templates/auth/profile.html` | TC-PROF-01,02 | 프로필 수정 + 동의 기반 마이데이터 조회 |
 | FR-004 | 게시물 생성/조회(분류/첨부 포함) | P0 | `/posts`, `/posts/new`, `/posts/{id}` | `was/app/routes.py`, `was/app/templates/posts/*`, `was/app/models.py` | TC-POST-01,04,06,07 | 목록/상세에 즉시 반영, 분류/첨부 저장 |
 | FR-005 | 게시물 수정/삭제 권한 | P0 | `/posts/{id}`, `/posts/{id}/delete` | `was/app/routes.py` | TC-POST-02,03,05 | 작성자/관리자만 허용 |
 | FR-006 | 공지 사용자 조회 | P0 | `/notices`, `/notices/{id}` | `was/app/routes.py`, `was/app/templates/notices/*` | TC-NOTI-01,03 | 비공개 공지 차단 |

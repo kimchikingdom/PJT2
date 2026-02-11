@@ -758,7 +758,7 @@ python3 brute_force.py
 ...
 [ 18] admin1234            ✓ 성공!
 
-[+] 발견: admin1234  /  현재 URL: http://localhost:8080/
+[+] 발견: admin1234  /  현재 URL: http://localhost:8090/
 ```
 
 **Step 3 – Burp Suite Intruder로 대입**
