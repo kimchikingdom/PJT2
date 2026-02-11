@@ -20,7 +20,7 @@ import requests
 # ── 기본 설정 ──────────────────────────────────────────────
 DEFAULT_URL       = "http://localhost:8090"
 DEFAULT_USERNAME  = "user1"
-DEFAULT_WORDLIST  = "/Users/sangwoolee/PJT2/rockyou.txt"
+DEFAULT_WORDLIST  = "/Users/hanminseo/sesac/PJT2/rockyou.txt"
 DEFAULT_TOP_N     = 50
 DEFAULT_DELAY     = 0.1   # 요청 간격 (초)
 

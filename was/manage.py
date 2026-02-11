@@ -195,4 +195,4 @@ if __name__ == "__main__":
         ensure_schema_upgrades()
         ensure_default_admin()
         ensure_provider_subjects(app.config.get("PROVIDER_SEED_SUBJECTS", 100))
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8090")), debug=True)

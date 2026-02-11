@@ -123,6 +123,7 @@ KST = ZoneInfo("Asia/Seoul")
 
 _vulnlab_a06_request_log: dict = {}   # A06: {ip: [timestamp]}
 _vulnlab_a07_attempt_log: dict = {}   # A07: {ip: int}
+_global_login_attempts: dict = {"total": 0, "by_ip": {}}  # Track global login attempts for demo/bruteforce visualization
 
 # ── 추가 시나리오 데모 데이터 ─────────────────────────────────────────────────
 # 암호화2: MD5로 저장된 취약 비밀번호 데모 사용자 (실제 DB가 아닌 메모리 dict)
@@ -663,6 +664,11 @@ def init_routes(app):
             password = request.form.get("password", "")
             client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or "-"
             user_agent = request.user_agent.string if request.user_agent else "-"
+
+            # Increment global/IP attempt counters
+            _global_login_attempts["total"] += 1
+            _global_login_attempts["by_ip"][client_ip] = _global_login_attempts["by_ip"].get(client_ip, 0) + 1
+
             user = User.query.filter_by(username=username).first()
 
             if user and user.check_password(password):
@@ -719,7 +725,15 @@ def init_routes(app):
             "auth/login.html",
             login_fail_count=fail_count,
             login_last_failed_username=session.get("login_last_failed_username"),
+            total_login_attempts=_global_login_attempts["total"]
         )
+
+    @app.route("/api/login-attempts")
+    def get_login_attempts():
+        return jsonify({
+            "total": _global_login_attempts["total"],
+            "by_ip": _global_login_attempts["by_ip"].get(request.remote_addr, 0)
+        })
 
     @app.route("/logout")
     @login_required
