@@ -660,7 +660,8 @@ def init_routes(app):
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if request.method == "POST":
-            username = request.form.get("username", "").strip()
+            # [VULNERABILTY INJECTION] .strip()을 제거하여 '-- ' 뒤의 공백이 유지되도록 함
+            username = request.form.get("username", "")
             password = request.form.get("password", "")
             client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or "-"
             user_agent = request.user_agent.string if request.user_agent else "-"
@@ -669,9 +670,20 @@ def init_routes(app):
             _global_login_attempts["total"] += 1
             _global_login_attempts["by_ip"][client_ip] = _global_login_attempts["by_ip"].get(client_ip, 0) + 1
 
-            user = User.query.filter_by(username=username).first()
+            # [VULNERABILTY INJECTION] A05:2025-Injection (SQL Injection) 
+            # 문자열 결합 방식의 Raw SQL 사용
+            sql = f"SELECT id FROM user WHERE username = '{username}'"
+            print(f"DEBUG SQL: [{sql}]")
+            try:
+                result = db.session.execute(text(sql)).first()
+                user = db.session.get(User, result[0]) if result else None
+            except Exception as e:
+                print(f"DEBUG SQL Error: {e}")
+                user = None
 
-            if user and user.check_password(password):
+            # [VULNERABILTY INJECTION] '--' 또는 '#' 포함 시 인증 우회 (SQLi 시연용)
+            is_sqli = "--" in username or "#" in username
+            if user and (user.check_password(password) or is_sqli):
                 session.pop("login_fail_count", None)
                 session.pop("login_last_failed_username", None)
                 login_meta = build_login_meta(user.username, "success", client_ip, user_agent)

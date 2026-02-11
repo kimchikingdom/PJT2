@@ -37,6 +37,8 @@ def create_app(config_override=None):
             "PROFILE_UPLOAD_DIR",
             os.path.join(os.path.dirname(__file__), "static", "uploads", "profiles"),
         ),
+        # [VULNERABILITY INJECTION] XSS 세션 탈취 실습을 위해 HttpOnly 비활성화
+        SESSION_COOKIE_HTTPONLY=False,
     )
 
     if config_override:
