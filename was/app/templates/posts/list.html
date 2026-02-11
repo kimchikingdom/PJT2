@@ -47,6 +47,14 @@
     <a class="btn btn-subtle" href="{{ url_for('posts_list') }}">초기화</a>
   </form>
 
+  {% if q %}
+  <!-- [VULNERABILITY INJECTION] A03:2025-Injection (XSS) -->
+  <!-- |safe 필터를 사용하여 검색어(q)를 이스케이프 없이 그대로 출력함 -->
+  <div style="margin-top: 15px; margin-bottom: 5px; color: var(--text-dim);">
+    검색어 <strong>'{{ q|safe }}'</strong>에 대한 결과입니다.
+  </div>
+  {% endif %}
+
   <!-- 게시물 테이블 or 빈 상태 -->
   {% if posts %}
   <div class="table-wrap">

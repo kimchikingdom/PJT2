@@ -40,6 +40,14 @@ services:
     networks:
       - app_net
 
+  attacker:
+    build:
+      context: ./attacker
+    container_name: public-health-attacker
+    restart: unless-stopped
+    networks:
+      - app_net
+
 volumes:
   db_data:
 
